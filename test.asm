@@ -23,7 +23,9 @@ irq:jmp $ea31
     lda Abcdef,x
     lda (Abcdef),y
     ldx Abcdef,y
+    let x=500
 back:
+let y=600
     nop
     bne back
     beq next
@@ -53,3 +55,4 @@ again:;testcomment
  bpl again;testcomment
  brk;testcomment
 ;testcomment
+let z= 700

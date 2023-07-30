@@ -243,47 +243,43 @@ class Assembler:
     def dis(self, index, pc, opcode, arg_type, parsed_arg, rel_dist, line):
         print("{:05d}:{:04x} {:02x} ".format(index + 1, pc, opcodes[opcode][arg_type]), end = "")
         if arg_type == IMPLIED:
-            print("     ".format(line), end = "")
-        elif arg_type > RELATIVE and arg_type < ABSOLUTE:
-            print("{:02x}   ".format(parsed_arg, line), end = "")
-        elif arg_type == RELATIVE:
-            if rel_dist > 127:
-                print("{:02x}   ".format(rel_dist, line), end = "")
-            else:
-                print("{:02x}   ".format(rel_dist, line), end = "")
+            print("     ", end = "")
+        elif arg_type > IMPLIED and arg_type < ABSOLUTE:
+            print(f"{parsed_arg:02x}   ", end = "")
+        
         else:
-            print("{:02x} {:02x}".format(parsed_arg % 256, parsed_arg // 256, line), end = "")
-        print(": {}".format(line))
+            print(f"{parsed_arg % 256:02x} {parsed_arg // 256:02x}", end = "")
+        print(f":{line}")
 
-    def dis2(self, index, pc, opcode, arg_type, parsed_arg, rel_dist):
-        print("{:5d}     {:04x} {:02x} ".format(index + 1, pc, opcodes[opcode][arg_type]), end = "")
-        if arg_type == IMPLIED:
-            print("      {}".format(opcode))
-        elif arg_type == IMMEDIATE:
-            print("{:02x}    {} #${:02x}".format(parsed_arg, opcode, parsed_arg))
-        elif arg_type == ZP:
-            print("{:02x}    {} ${:02x}".format(parsed_arg, opcode, parsed_arg))
-        elif arg_type == ZPX:
-            print("{:02x}    {} ${:02x},x".format(parsed_arg, opcode, parsed_arg))
-        elif arg_type == ZPY:
-            print("{:02x}    {} ${:02x},y".format(parsed_arg, opcode, parsed_arg))
-        elif arg_type == USELESS:
-            print("{:02x}    {} (${:02x},x)".format(parsed_arg, opcode, parsed_arg))
-        elif arg_type == INDIRECTY:
-            print("{:02x}    {} (${:02x}),y".format(parsed_arg, opcode, parsed_arg))
-        elif arg_type == ABSOLUTE:
-            print("{:02x} {:02x} {} ${:04x}".format(parsed_arg % 256, parsed_arg // 256, opcode, parsed_arg))
-        elif arg_type == RELATIVE:
-            if rel_dist > 127:
-                print("{:02x}    {} ${:04x}".format(rel_dist, opcode, pc - 254 + rel_dist))
-            else:
-                print("{:02x}    {} ${:04x}".format(rel_dist, opcode, pc + rel_dist))
-        elif arg_type == INDIRECT:
-            print("{:02x} {:02x} {} (${:04x})".format(parsed_arg % 256, parsed_arg // 256, opcode, parsed_arg))
-        elif arg_type == ABSOLUTEX:
-            print("{:02x} {:02x} {} ${:04x},x".format(parsed_arg % 256, parsed_arg // 256, opcode, parsed_arg))
-        elif arg_type == ABSOLUTEY:
-            print("{:02x} {:02x} {} ${:04x},y".format(parsed_arg % 256, parsed_arg // 256, opcode, parsed_arg))
+    # def dis2(self, index, pc, opcode, arg_type, parsed_arg, rel_dist):
+    #     print("{:05d}     {:04x} {:02x} ".format(index + 1, pc, opcodes[opcode][arg_type]), end = "")
+    #     if arg_type == IMPLIED:
+    #         print("      {}".format(opcode))
+    #     elif arg_type == IMMEDIATE:
+    #         print("{:02x}    {} #${:02x}".format(parsed_arg, opcode, parsed_arg))
+    #     elif arg_type == ZP:
+    #         print("{:02x}    {} ${:02x}".format(parsed_arg, opcode, parsed_arg))
+    #     elif arg_type == ZPX:
+    #         print("{:02x}    {} ${:02x},x".format(parsed_arg, opcode, parsed_arg))
+    #     elif arg_type == ZPY:
+    #         print("{:02x}    {} ${:02x},y".format(parsed_arg, opcode, parsed_arg))
+    #     elif arg_type == USELESS:
+    #         print("{:02x}    {} (${:02x},x)".format(parsed_arg, opcode, parsed_arg))
+    #     elif arg_type == INDIRECTY:
+    #         print("{:02x}    {} (${:02x}),y".format(parsed_arg, opcode, parsed_arg))
+    #     elif arg_type == ABSOLUTE:
+    #         print("{:02x} {:02x} {} ${:04x}".format(parsed_arg % 256, parsed_arg // 256, opcode, parsed_arg))
+    #     elif arg_type == RELATIVE:
+    #         if rel_dist > 127:
+    #             print("{:02x}    {} ${:04x}".format(rel_dist, opcode, pc - 254 + rel_dist))
+    #         else:
+    #             print("{:02x}    {} ${:04x}".format(rel_dist, opcode, pc + rel_dist))
+    #     elif arg_type == INDIRECT:
+    #         print("{:02x} {:02x} {} (${:04x})".format(parsed_arg % 256, parsed_arg // 256, opcode, parsed_arg))
+    #     elif arg_type == ABSOLUTEX:
+    #         print("{:02x} {:02x} {} ${:04x},x".format(parsed_arg % 256, parsed_arg // 256, opcode, parsed_arg))
+    #     elif arg_type == ABSOLUTEY:
+    #         print("{:02x} {:02x} {} ${:04x},y".format(parsed_arg % 256, parsed_arg // 256, opcode, parsed_arg))
 
     def show_labels(self):
         for label in self.labels:
@@ -291,6 +287,7 @@ class Assembler:
                 print(f"{label:12s}: ${self.labels[label]['value']:04x}")
 
     def poke(self, adr, byte):
+        "Writes a byte into 'memory' and updates self.min_memory and self.max_memory"
         if adr < self.min_memory:
             self.min_memory = adr
         if adr > self.max_memory:
@@ -304,4 +301,4 @@ file = open("test.asm")
 asm = Assembler(file.read())
 file.close()
 asm.assemble(True) # Print compiled program
-# asm.show_labels() # Print labels
+asm.show_labels() # Print labels
