@@ -4,14 +4,11 @@ let test      =         1234
     let adresse =$fff0
     org $c000
     SEi
-    lda #<irq ; IRQ
-    STA $314
-    lda #>irq
-sta $315
-    lda #147
-    jsr basout
+    lda #<irq\STA $314
+    lda #>irq \ sta $315
+    lda #     147\    jsr basout
 clI
-    rts
+    byte 96;rts
 irq:jmp $ea31
     lda #%11111110
     ldx #254
@@ -42,8 +39,7 @@ next:
     jmp again
     brk
 ;    xyz
-    brk
-    brk
+    brk\ brk   \nop\ nop
     test_ende:brk
 
 ;testcomment

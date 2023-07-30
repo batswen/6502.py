@@ -131,25 +131,36 @@ class Assembler:
         return [ABSOLUTE, self.expression(arg)] # ABS/ZP or REL
 
     def parse(self):
-        for index, line in enumerate(self.lines):
-            new_entry = { "line": index + 1, "label": "", "opcode": "", "arg": "", "source_line": line }
+        lines = []
+        index = 1
+        for line in self.lines:
             if ";" in line:
                 line = line.split(";")[0]
+            while "\\" in line:
+                lines.append({"index": index, "line": line.split("\\")[0].strip()})
+                line = line.split("\\", 1)[1]
+            if line != "":
+                lines.append({"index": index, "line": line.strip()})
+            index += 1
+        for index, source_line in enumerate(lines):
+            label = ""
+            opcode = ""
+            arg = ""
+            line = source_line["line"]
+
             if ":" in line:
-                new_entry["label"] = line.split(":")[0].strip()
+                label = line.split(":")[0].strip()
                 line = line.split(":")[1]
             line = line.strip()
             if " " in line:
-                new_entry["opcode"] = line.split(" ")[0]
-                new_entry["arg"] = line.split(" ", 1)[1]
+                opcode = line.split(" ")[0].lower()
+                arg = line.split(" ", 1)[1]
             else:
-                new_entry["opcode"] = line
-                new_entry["arg"] = ""
-            if new_entry["opcode"].lower() in opcodes:
-                new_entry["opcode"] = new_entry["opcode"].lower()
-            if new_entry["label"] != "" or new_entry["opcode"] != "":
-                self.tokens.append(new_entry)
-            print(new_entry)
+                opcode = line.lower()
+                arg = ""
+
+            if label != "" or opcode != "":
+                self.tokens.append({ "line": source_line["index"], "label": label, "opcode": opcode, "arg": arg, "source_line": line })
 
     def assemble(self, verbose):
         try:
@@ -195,7 +206,8 @@ class Assembler:
                         for arg_byte in arg_bytes:
                             self.poke(pc + index, self.expression(arg_byte.strip()))
                             index += 1
-
+                        if verbose:
+                            self.dis(line, pc, "byte", 0, self.expression(arg_bytes[0]), 0, self.source_line)
                     pc += arg.count(",") + 1
                 continue
 
@@ -247,6 +259,9 @@ class Assembler:
             raise Exception("No base address.")
 
     def dis(self, index, pc, opcode, arg_type, parsed_arg, rel_dist, line):
+        if opcode == "byte":
+            print(f"{index:05d}:{pc:04x} {parsed_arg:02x}      :{line}")
+            return
         print(f"{index:05d}:{pc:04x} {opcodes[opcode][arg_type]:02x} ", end = "")
         if arg_type == IMPLIED:
             print(f"     :{line}")
