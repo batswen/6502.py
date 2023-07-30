@@ -61,11 +61,10 @@ opcodes = {
     "tya": { IMPLIED: 0x98 }
 }
 class Assembler:
-    
     def __init__(self, source):
         self.lines = source.split("\n")
         self.source_line = ""
-        self.line = 1
+        self.line = ""
         self.tokens = []
         self.memory = bytearray(65536)
         self.min_memory = 65536
@@ -73,7 +72,7 @@ class Assembler:
         self.labels = {
             # line = -1 -> defined here; ignored by ".show_labels()"
             # Kernal addresses for all C= computers
-            "basout":  { "value": 0xffd2, "line": -1 }, "plot": { "value": 0xfff0, "line": -1 },
+            "basout": { "value": 0xffd2, "line": -1 }, "plot": { "value": 0xfff0, "line": -1 },
             "open": { "value": 0xffc0, "line": -1 }, "close": { "value": 0xffc3, "line": -1 }, "setlfs": { "value": 0xffba, "line": -1 }, "setnam": { "value": 0xffbd, "line": -1 },
             "load": { "value": 0xffd5, "line": -1 }, "save": { "value": 0xffd8, "line": -1 },
             # BASIC adr for C64
@@ -81,12 +80,12 @@ class Assembler:
             "frmnum": { "value": 0xad8a, "line": -1 }, "getadr": { "value": 0xb7f7, "line": -1 }
         }
 
-    def get_number(self, arg):
-        #print(f"get_number '{arg}'")
+    def number(self, arg):
+        #print(f"number '{arg}'")
         if arg.startswith("<"):               #low byte
-            return self.get_number(arg[1:]) % 256
+            return self.number(arg[1:]) % 256
         if arg.startswith(">"):               #high byte
-            return self.get_number(arg[1:]) // 256
+            return self.number(arg[1:]) // 256
         if arg[0].isalpha():                  #label
             if arg not in self.labels:
                 self.labels[arg] = { "value": 65535, "line": self.line }
@@ -97,36 +96,39 @@ class Assembler:
             return int(arg[1:], 2)
         else:                                 #dec
             return int(arg)
+
+    def expression(self, arg):
+        return self.number(arg)
             
     def test_arg(self, arg):
         #print(f"test_arg '{arg}'")
         if arg == "":
             return [IMPLIED, 0]
         if arg.startswith("#"):
-            value = self.get_number(arg[1:])
+            value = self.expression(arg[1:])
             if value > 255:
-                raise Exception(f"Immediate value error in line {self.line}.")
+                raise Exception(f"Immediate value error in line {self.line + 1}.")
             return [IMMEDIATE, value]
         if arg.startswith("("):
             if arg.endswith(",x)"):
-                return [USELESS, self.get_number(arg[1:-3])]
+                return [USELESS, self.expression(arg[1:-3])]
             if arg.endswith("),y"):
-                return [INDIRECTY, self.get_number(arg[1:-3])]
+                return [INDIRECTY, self.expression(arg[1:-3])]
             if arg.endswith(")"):
-                return [INDIRECT, self.get_number(arg[1:-1])]
+                return [INDIRECT, self.expression(arg[1:-1])]
         if arg.endswith(",x"):
-            value = self.get_number(arg[:-2])
+            value = self.expression(arg[:-2])
             if value <= 255:
                 return [ZPX, value]
             else:
                 return [ABSOLUTEX, value]
         if arg.endswith(",y"):
-            value = self.get_number(arg[:-2])
+            value = self.expression(arg[:-2])
             if value <= 255:
                 return [ZPY, value]
             else:
                 return [ABSOLUTEY, value]
-        return [ABSOLUTE, self.get_number(arg)] # ABS/ZP or REL
+        return [ABSOLUTE, self.expression(arg)] # ABS/ZP or REL
 
     def parse(self):
         for index, line in enumerate(self.lines):
@@ -174,14 +176,14 @@ class Assembler:
                     continue
             if opcode in ["org", "let", "byte"]:
                 if opcode == "org":
-                    pc = self.get_number(arg)
+                    pc = self.expression(arg)
                     if run == 2:
                         self.poke(pc, 0) # to set min_memory and max_memory
                     org = True
                 elif opcode == "let":
                     let_label, let_value = arg.split("=")
                     let_label = let_label.strip()
-                    value = self.get_number(let_value)
+                    value = self.expression(let_value)
                     if org and value < 256:
                         raise Exception("ZP labels must be declared before org.")
                     self.labels[let_label] = { "value": value, "line": self.line }
@@ -308,4 +310,4 @@ asm = Assembler(file.read())
 file.close()
 asm.assemble(False) # Print compiled program
 # asm.show_labels() # Print labels
-asm.write_hexdump()
+# asm.write_hexdump()
