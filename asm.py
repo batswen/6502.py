@@ -65,7 +65,7 @@ class Assembler:
     def __init__(self, source):
         self.lines = source.split("\n")
         self.source_line = ""
-        self.line = 0
+        self.line = 1
         self.tokens = []
         self.memory = bytearray(65536)
         self.min_memory = 65536
@@ -82,7 +82,7 @@ class Assembler:
         }
 
     def get_number(self, arg):
-        #print("get_number '{}'".format(arg))
+        #print(f"get_number '{arg}'")
         if arg.startswith("<"):               #low byte
             return self.get_number(arg[1:]) % 256
         if arg.startswith(">"):               #high byte
@@ -99,13 +99,13 @@ class Assembler:
             return int(arg)
             
     def test_arg(self, arg):
-        #print("test_arg '{}'".format(arg))
+        #print(f"test_arg '{arg}'")
         if arg == "":
             return [IMPLIED, 0]
         if arg.startswith("#"):
             value = self.get_number(arg[1:])
             if value > 255:
-                raise Exception("Immediate value error in line {}.".format(self.line))
+                raise Exception(f"Immediate value error in line {self.line}.")
             return [IMMEDIATE, value]
         if arg.startswith("("):
             if arg.endswith(",x)"):
@@ -161,7 +161,6 @@ class Assembler:
     def do(self, run, verbose):
         pc = 0
         org = False
-
         for token in self.tokens:
             line = token["line"]
             self.line = line
@@ -169,7 +168,6 @@ class Assembler:
             opcode = token["opcode"]
             arg = token["arg"]
             self.source_line = token["source_line"]
-
             if label != "":
                 self.labels[label] = { "value": pc, "line": line }
                 if opcode == "":
@@ -178,7 +176,7 @@ class Assembler:
                 if opcode == "org":
                     pc = self.get_number(arg)
                     if run == 2:
-                        self.poke(pc, 0)
+                        self.poke(pc, 0) # to set min_memory and max_memory
                     org = True
                 elif opcode == "let":
                     let_label, let_value = arg.split("=")
@@ -192,7 +190,7 @@ class Assembler:
                 continue
 
             if opcode not in opcodes:
-                raise Exception("Unkonwn opcode '{}' in line {}.".format(opcode, line + 1))
+                raise Exception(f"Unkonwn opcode '{opcode}' in line {line + 1}.")
 
             arg_type, parsed_arg = self.test_arg(arg)
             rel_dist = 0
@@ -206,7 +204,7 @@ class Assembler:
                     else:
                         rel_dist = parsed_arg - pc
             if not arg_type in opcodes[opcode]:
-                raise Exception("Unkonwn addressing mode '{}' in line {}.".format(opcode, line + 1))
+                raise Exception(f"Unkonwn addressing mode '{opcode}' in line {line + 1}.")
   
             if run == 2:
                 self.poke(pc, opcodes[opcode][arg_type])
@@ -218,7 +216,7 @@ class Assembler:
                 if arg_type == RELATIVE:
                     self.poke(pc + 1, rel_dist)
                     if rel_dist > 255 or rel_dist < 0:
-                        raise Exception("Branch error in line {}.".format(line + 1))
+                        raise Exception(f"Branch error in line {line + 1}.")
                 elif arg_type < ABSOLUTE:
                     self.poke(pc + 1, parsed_arg)
                 else:
@@ -234,14 +232,12 @@ class Assembler:
         if run == 1:
             for label in self.labels:
                 if self.labels[label]["value"] == 65535:
-                    raise Exception("Unknwon label '{}' in line {}.".format(label, self.labels[label]["line"] + 1))
-            if verbose:
-                self.show_labels()
+                    raise Exception(f"Unknwon label '{label}' in line {self.labels[label]['line'] + 1}.")
         if not org:
             raise Exception("No base address.")
 
     def dis(self, index, pc, opcode, arg_type, parsed_arg, rel_dist, line):
-        print("{:05d}:{:04x} {:02x} ".format(index + 1, pc, opcodes[opcode][arg_type]), end = "")
+        print(f"{index + 1:05d}:{pc:04x} {opcodes[opcode][arg_type]:02x} ", end = "")
         if arg_type == IMPLIED:
             print("     ", end = "")
         elif arg_type > IMPLIED and arg_type < ABSOLUTE:
@@ -302,3 +298,4 @@ asm = Assembler(file.read())
 file.close()
 asm.assemble(True) # Print compiled program
 asm.show_labels() # Print labels
+print(f"")
