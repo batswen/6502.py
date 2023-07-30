@@ -296,10 +296,16 @@ class Assembler:
 
     def write_binary(self, filename):
         pass
+    def write_hexdump(self):
+        adr = self.min_memory
+        print(f"{adr % 256:02x}{adr // 256:02x}",end="") # Startadr
+        while adr < self.max_memory:
+            print(f"{self.memory[adr]:02x}", end="") # 
+            adr += 1
     
 file = open("test.asm")
 asm = Assembler(file.read())
 file.close()
-asm.assemble(True) # Print compiled program
-asm.show_labels() # Print labels
-print(f"")
+asm.assemble(False) # Print compiled program
+# asm.show_labels() # Print labels
+asm.write_hexdump()
