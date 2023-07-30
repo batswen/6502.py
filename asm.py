@@ -81,7 +81,7 @@ class Assembler:
         }
 
     def number(self, arg):
-        print(f"number '{arg}'")
+        # print(f"number '{arg}'")
         if arg.startswith("<"):               #low byte
             return self.number(arg[1:]) % 256
         if arg.startswith(">"):               #high byte
@@ -317,4 +317,4 @@ asm = Assembler(file.read())
 file.close()
 asm.assemble(False) # Print compiled program
 # asm.show_labels() # Print labels
-asm.write_hexdump()
+# asm.write_hexdump()
