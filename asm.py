@@ -248,17 +248,13 @@ class Assembler:
     def dis(self, index, pc, opcode, arg_type, parsed_arg, rel_dist, line):
         print(f"{index + 1:05d}:{pc:04x} {opcodes[opcode][arg_type]:02x} ", end = "")
         if arg_type == IMPLIED:
-            print("     ", end = "")
-        elif arg_type > IMPLIED and arg_type < RELATIVE:
-            print(f"{parsed_arg:02x}   ", end = "")
+            print(f"     :{line}")
+        elif arg_type > RELATIVE and arg_type < ABSOLUTE:
+            print(f"{parsed_arg:02x}   :{line}")
         elif arg_type == RELATIVE:
-            print(f"{rel_dist:02x}   ", end = "")
+            print(f"{rel_dist:02x}   :{line} (Branch target: ${parsed_arg:04x})")
         else:
-            print(f"{parsed_arg % 256:02x} {parsed_arg // 256:02x}", end = "")
-        if arg_type == RELATIVE:
-            print(f":{line} (Branch target: ${parsed_arg:04x})")
-        else:
-            print(f":{line}")
+            print(f"{parsed_arg % 256:02x} {parsed_arg // 256:02x}:{line}")
 
     # def dis2(self, index, pc, opcode, arg_type, parsed_arg, rel_dist):
     #     print("{:05d}     {:04x} {:02x} ".format(index + 1, pc, opcodes[opcode][arg_type]), end = "")
@@ -315,6 +311,6 @@ class Assembler:
 file = open("test.asm")
 asm = Assembler(file.read())
 file.close()
-asm.assemble(False) # Print compiled program
+asm.assemble(True) # Print compiled program
 # asm.show_labels() # Print labels
 # asm.write_hexdump()
