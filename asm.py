@@ -107,7 +107,7 @@ class Assembler:
         if arg.startswith("#"):
             value = self.expression(arg[1:])
             if value > 255:
-                raise Exception(f"Immediate value error in line {self.line + 1}.")
+                raise Exception(f"Immediate value error in line {self.line}.")
             return [IMMEDIATE, value]
         if arg.startswith("("):
             if arg.endswith(",x)"):
@@ -132,7 +132,7 @@ class Assembler:
 
     def parse(self):
         for index, line in enumerate(self.lines):
-            new_entry = { "line": index, "label": "", "opcode": "", "arg": "", "source_line": line }
+            new_entry = { "line": index + 1, "label": "", "opcode": "", "arg": "", "source_line": line }
             if ";" in line:
                 line = line.split(";")[0]
             if ":" in line:
@@ -149,6 +149,7 @@ class Assembler:
                 new_entry["opcode"] = new_entry["opcode"].lower()
             if new_entry["label"] != "" or new_entry["opcode"] != "":
                 self.tokens.append(new_entry)
+            print(new_entry)
 
     def assemble(self, verbose):
         try:
@@ -156,7 +157,7 @@ class Assembler:
             self.do(1, verbose)
             self.do(2, verbose)
 
-            print(f"Code: ${self.min_memory:04x} - ${self.max_memory:04x}")
+            print(f"Code: ${self.min_memory:04x} - ${self.max_memory - 1:04x}")
         except Exception as arg:
             print(arg)
             print(self.source_line)
@@ -185,21 +186,21 @@ class Assembler:
                     let_label = let_label.strip()
                     value = self.expression(let_value)
                     if org and value < 256:
-                        raise Exception("ZP labels must be declared before org.")
+                        raise Exception(f"ZP labels must be declared before org in line {line}.")
                     self.labels[let_label] = { "value": value, "line": self.line }
                 elif opcode == "byte":
                     if run == 2:
                         arg_bytes = arg.split(",")
                         index = 0
                         for arg_byte in arg_bytes:
-                            self.poke(pc + index, self.number(arg_byte.strip()))
+                            self.poke(pc + index, self.expression(arg_byte.strip()))
                             index += 1
 
                     pc += arg.count(",") + 1
                 continue
 
             if opcode not in opcodes:
-                raise Exception(f"Unkonwn opcode '{opcode}' in line {line + 1}.")
+                raise Exception(f"Unkonwn opcode '{opcode}' in line {line}.")
 
             arg_type, parsed_arg = self.test_arg(arg)
             rel_dist = 0
@@ -213,7 +214,7 @@ class Assembler:
                     else:
                         rel_dist = parsed_arg - pc
             if not arg_type in opcodes[opcode]:
-                raise Exception(f"Unkonwn addressing mode '{opcode}' in line {line + 1}.")
+                raise Exception(f"Unkonwn addressing mode '{opcode}' in line {line}.")
   
             if run == 2:
                 self.poke(pc, opcodes[opcode][arg_type])
@@ -225,7 +226,7 @@ class Assembler:
                 if arg_type == RELATIVE:
                     self.poke(pc + 1, rel_dist)
                     if rel_dist > 255 or rel_dist < 0:
-                        raise Exception(f"Branch error in line {line + 1}.")
+                        raise Exception(f"Branch error in line {line}.")
                 elif arg_type < ABSOLUTE:
                     self.poke(pc + 1, parsed_arg)
                 else:
@@ -241,12 +242,12 @@ class Assembler:
         if run == 1:
             for label in self.labels:
                 if self.labels[label]["value"] == 65535:
-                    raise Exception(f"Unknwon label '{label}' in line {self.labels[label]['line'] + 1}.")
+                    raise Exception(f"Unknwon label '{label}' in line {self.labels[label]['line']}.")
         if not org:
             raise Exception("No base address.")
 
     def dis(self, index, pc, opcode, arg_type, parsed_arg, rel_dist, line):
-        print(f"{index + 1:05d}:{pc:04x} {opcodes[opcode][arg_type]:02x} ", end = "")
+        print(f"{index:05d}:{pc:04x} {opcodes[opcode][arg_type]:02x} ", end = "")
         if arg_type == IMPLIED:
             print(f"     :{line}")
         elif arg_type > RELATIVE and arg_type < ABSOLUTE:
@@ -303,10 +304,15 @@ class Assembler:
         pass
     def write_hexdump(self):
         adr = self.min_memory
-        print(f"{adr % 256:02x}{adr // 256:02x}",end="") # Startadr
+        # print(f"{adr % 256:02x}{adr // 256:02x}",end="")
         while adr < self.max_memory:
-            print(f"{self.memory[adr]:02x}", end="") # 
-            adr += 1
+            print(f"{adr:04x} ", end="")
+            for i in range(8):
+                if adr + i >= self.max_memory:
+                    continue
+                print(f" {self.memory[adr + i]:02x}", end="")
+            adr += 8
+            print()
     
 file = open("test.asm")
 asm = Assembler(file.read())
