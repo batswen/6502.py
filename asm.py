@@ -81,7 +81,7 @@ class Assembler:
         }
 
     def number(self, arg):
-        #print(f"number '{arg}'")
+        print(f"number '{arg}'")
         if arg.startswith("<"):               #low byte
             return self.number(arg[1:]) % 256
         if arg.startswith(">"):               #high byte
@@ -188,7 +188,14 @@ class Assembler:
                         raise Exception("ZP labels must be declared before org.")
                     self.labels[let_label] = { "value": value, "line": self.line }
                 elif opcode == "byte":
-                    pass
+                    if run == 2:
+                        arg_bytes = arg.split(",")
+                        index = 0
+                        for arg_byte in arg_bytes:
+                            self.poke(pc + index, self.number(arg_byte.strip()))
+                            index += 1
+
+                    pc += arg.count(",") + 1
                 continue
 
             if opcode not in opcodes:
@@ -310,4 +317,4 @@ asm = Assembler(file.read())
 file.close()
 asm.assemble(False) # Print compiled program
 # asm.show_labels() # Print labels
-# asm.write_hexdump()
+asm.write_hexdump()

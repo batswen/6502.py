@@ -56,3 +56,5 @@ sta ($5f),y;testcomment
  brk;testcomment
 ;testcomment
 let z= 700
+    byte 8,0, 0, $ff,>irq,<Abcdef
+    rts
