@@ -38,7 +38,7 @@ next:
     jmp ($308)
     jsr adresse
     lda 10000,x
-    sta 45054,y
+    sta 45054,y;hihi
     jmp again
     brk
 ;    xyz
@@ -50,7 +50,7 @@ next:
  org $c522;testcomment
 again:;testcomment
  lda $01fc,y;testcomment
- sta ($5f),y;testcomment
+sta ($5f),y;testcomment
  dey;testcomment
  bpl again;testcomment
  brk;testcomment

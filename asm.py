@@ -240,12 +240,16 @@ class Assembler:
         print(f"{index + 1:05d}:{pc:04x} {opcodes[opcode][arg_type]:02x} ", end = "")
         if arg_type == IMPLIED:
             print("     ", end = "")
-        elif arg_type > IMPLIED and arg_type < ABSOLUTE:
+        elif arg_type > IMPLIED and arg_type < RELATIVE:
             print(f"{parsed_arg:02x}   ", end = "")
-        
+        elif arg_type == RELATIVE:
+            print(f"{rel_dist:02x}   ", end = "")
         else:
             print(f"{parsed_arg % 256:02x} {parsed_arg // 256:02x}", end = "")
-        print(f":{line}")
+        if arg_type == RELATIVE:
+            print(f":{line} (Branch target: ${parsed_arg:04x})")
+        else:
+            print(f":{line}")
 
     # def dis2(self, index, pc, opcode, arg_type, parsed_arg, rel_dist):
     #     print("{:05d}     {:04x} {:02x} ".format(index + 1, pc, opcodes[opcode][arg_type]), end = "")
