@@ -19,9 +19,10 @@ irq:jmp $ea31
     lda Abcdef
     lda Abcdef,x
     lda (Abcdef),y
-    ldx Abcdef,y
+    nop\ldx Abcdef,y
     let x=500
 back:
+unused_label:
 let y=600
     nop
     bne back
@@ -42,6 +43,7 @@ next:
     brk\ brk   \nop\ nop
     test_ende:brk
 
+    ;testcomment
 ;testcomment
  org $c522;testcomment
 again:;testcomment

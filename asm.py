@@ -64,22 +64,23 @@ class Assembler:
     def __init__(self, source):
         self.lines = source.split("\n")
         self.source_line = ""
-        self.line = ""
+        self.line = 0
         self.tokens = []
         self.memory = bytearray(65536)
         self.min_memory = 65536
         self.max_memory = -1
         self.labels = {
-            # line = -1 -> defined here; ignored by ".show_labels()"
+            # line_number = -1 -> defined here; ignored by ".show_labels()"
             # Kernal addresses for all C= computers
-            "basout": { "value": 0xffd2, "line": -1 }, "plot": { "value": 0xfff0, "line": -1 },
-            "open": { "value": 0xffc0, "line": -1 }, "close": { "value": 0xffc3, "line": -1 }, "setlfs": { "value": 0xffba, "line": -1 }, "setnam": { "value": 0xffbd, "line": -1 },
-            "load": { "value": 0xffd5, "line": -1 }, "save": { "value": 0xffd8, "line": -1 },
+            "basout": { "value": 0xffd2, "line_number": -1 }, "plot": { "value": 0xfff0, "line_number": -1 },
+            "open": { "value": 0xffc0, "line_number": -1 }, "close": { "value": 0xffc3, "line_number": -1 }, "setlfs": { "value": 0xffba, "line_number": -1 }, "setnam": { "value": 0xffbd, "line_number": -1 },
+            "load": { "value": 0xffd5, "line_number": -1 }, "save": { "value": 0xffd8, "line_number": -1 },
             # BASIC adr for C64
-            "strout": { "value": 0xab1e, "line": -1 }, "chkkom": { "value": 0xaefd, "line": -1 }, "frmevl":{ "value": 0xe257, "line": -1 },
-            "frmnum": { "value": 0xad8a, "line": -1 }, "getadr": { "value": 0xb7f7, "line": -1 }
+            "strout": { "value": 0xab1e, "line_number": -1 }, "chkkom": { "value": 0xaefd, "line_number": -1 }, "frmevl":{ "value": 0xe257, "line_number": -1 },
+            "frmnum": { "value": 0xad8a, "line_number": -1 }, "getadr": { "value": 0xb7f7, "line_number": -1 }
         }
-
+    def new_label(self, value):
+        return { "value": value, "line_number": self.line, "refs": [] }
     def number(self, arg):
         # print(f"number '{arg}'")
         if arg.startswith("<"):               #low byte
@@ -87,14 +88,36 @@ class Assembler:
         if arg.startswith(">"):               #high byte
             return self.number(arg[1:]) // 256
         if arg[0].isalpha():                  #label
-            if arg not in self.labels:
-                self.labels[arg] = { "value": 65535, "line": self.line }
+            if arg not in self.labels: # forward ref
+                self.labels[arg] = self.new_label(65535)
+            if "refs" not in self.labels[arg]:
+                self.labels[arg]["refs"] = []
+            if self.line not in self.labels[arg]["refs"]:
+                self.labels[arg]["refs"].append(self.line)
             return self.labels[arg]["value"]
         if arg.startswith("$"):               #$hex
+            try:
+                dec = int(arg[1:], 16)
+            except:
+                raise Exception(f"Not a hex number")
+            if len(arg[1:]) > 4:
+                raise Exception(f"Illegal quantity")
             return int(arg[1:], 16)
         elif arg.startswith("%"):             #%bin
+            try:
+                dec = int(arg[1:], 2)
+            except:
+                raise Exception(f"Not a binary number")
+            if len(arg[1:]) > 16:
+                raise Exception(f"Illegal quantity")
             return int(arg[1:], 2)
         else:                                 #dec
+            try:
+                dec = int(arg)
+            except:
+                raise Exception(f"Not a decimal number")
+            if int(arg) > 65535:
+                raise Exception(f"Illegal quantity")
             return int(arg)
 
     def expression(self, arg):
@@ -107,7 +130,7 @@ class Assembler:
         if arg.startswith("#"):
             value = self.expression(arg[1:])
             if value > 255:
-                raise Exception(f"Immediate value error in line {self.line}.")
+                raise Exception(f"Immediate value error")
             return [IMMEDIATE, value]
         if arg.startswith("("):
             if arg.endswith(",x)"):
@@ -132,17 +155,17 @@ class Assembler:
 
     def parse(self):
         lines = []
-        index = 1
+        line_number = 1
         for line in self.lines:
             if ";" in line:
                 line = line.split(";")[0]
             while "\\" in line:
-                lines.append({"index": index, "line": line.split("\\")[0].strip()})
+                lines.append({"line_number": line_number, "line": line.split("\\")[0].strip()})
                 line = line.split("\\", 1)[1]
             if line != "":
-                lines.append({"index": index, "line": line.strip()})
-            index += 1
-        for index, source_line in enumerate(lines):
+                lines.append({"line_number": line_number, "line": line.strip()})
+            line_number += 1
+        for i, source_line in enumerate(lines):
             label = ""
             opcode = ""
             arg = ""
@@ -160,8 +183,8 @@ class Assembler:
                 arg = ""
 
             if label != "" or opcode != "":
-                self.tokens.append({ "line": source_line["index"], "label": label, "opcode": opcode, "arg": arg, "source_line": line })
-
+                self.tokens.append({ "line_number": source_line["line_number"], "label": label, "opcode": opcode, "arg": arg, "source_line": line })
+        # print(self.tokens)
     def assemble(self, verbose):
         try:
             self.parse()
@@ -170,20 +193,21 @@ class Assembler:
 
             print(f"Code: ${self.min_memory:04x} - ${self.max_memory - 1:04x}")
         except Exception as arg:
-            print(arg)
-            print(self.source_line)
+            print(f"Error: '{arg}' in line: {self.line}: '{self.source_line}'")
     def do(self, run, verbose):
         pc = 0
         org = False
         for token in self.tokens:
-            line = token["line"]
-            self.line = line
+            line_number = token["line_number"]
+            self.line = line_number
             label = token["label"]
             opcode = token["opcode"]
             arg = token["arg"]
             self.source_line = token["source_line"]
             if label != "":
-                self.labels[label] = { "value": pc, "line": line }
+                if run == 1:
+                    self.labels[label] = self.new_label(pc)
+
                 if opcode == "":
                     continue
             if opcode in ["org", "let", "byte"]:
@@ -192,13 +216,14 @@ class Assembler:
                     if run == 2:
                         self.poke(pc, 0) # to set min_memory and max_memory
                     org = True
-                elif opcode == "let":
+                elif opcode == "let" and run == 1:
                     let_label, let_value = arg.split("=")
                     let_label = let_label.strip()
                     value = self.expression(let_value)
                     if org and value < 256:
-                        raise Exception(f"ZP labels must be declared before org in line {line}.")
-                    self.labels[let_label] = { "value": value, "line": self.line }
+                        raise Exception(f"ZP labels must be declared before org in line {line_number}.")
+                    self.labels[let_label] = self.new_label(value)
+                    
                 elif opcode == "byte":
                     if run == 2:
                         arg_bytes = arg.split(",")
@@ -207,12 +232,12 @@ class Assembler:
                             self.poke(pc + index, self.expression(arg_byte.strip()))
                             index += 1
                         if verbose:
-                            self.dis(line, pc, "byte", 0, self.expression(arg_bytes[0]), 0, self.source_line)
+                            self.dis(line_number, pc, "byte", 0, self.expression(arg_bytes[0]), 0, self.source_line)
                     pc += arg.count(",") + 1
                 continue
 
             if opcode not in opcodes:
-                raise Exception(f"Unkonwn opcode '{opcode}' in line {line}.")
+                raise Exception(f"Unkonwn opcode '{opcode}' in line {line_number}.")
 
             arg_type, parsed_arg = self.test_arg(arg)
             rel_dist = 0
@@ -226,19 +251,19 @@ class Assembler:
                     else:
                         rel_dist = parsed_arg - pc
             if not arg_type in opcodes[opcode]:
-                raise Exception(f"Unkonwn addressing mode '{opcode}' in line {line}.")
+                raise Exception(f"Unkonwn addressing mode '{opcode}' in line {line_number}.")
   
             if run == 2:
                 self.poke(pc, opcodes[opcode][arg_type])
                 if verbose:
-                    self.dis(line, pc, opcode, arg_type, parsed_arg, rel_dist, self.source_line)
+                    self.dis(line_number, pc, opcode, arg_type, parsed_arg, rel_dist, self.source_line)
                 
                 #if arg_type == IMPLIED:
                 #    pass
                 if arg_type == RELATIVE:
                     self.poke(pc + 1, rel_dist)
                     if rel_dist > 255 or rel_dist < 0:
-                        raise Exception(f"Branch error in line {line}.")
+                        raise Exception(f"Branch error in line {line_number}.")
                 elif arg_type < ABSOLUTE:
                     self.poke(pc + 1, parsed_arg)
                 else:
@@ -254,13 +279,13 @@ class Assembler:
         if run == 1:
             for label in self.labels:
                 if self.labels[label]["value"] == 65535:
-                    raise Exception(f"Unknwon label '{label}' in line {self.labels[label]['line']}.")
+                    raise Exception(f"Unknwon label '{label}' in line {self.labels[label]['line_number']}.")
         if not org:
             raise Exception("No base address.")
 
     def dis(self, index, pc, opcode, arg_type, parsed_arg, rel_dist, line):
         if opcode == "byte":
-            print(f"{index:05d}:{pc:04x} {parsed_arg:02x}      :{line}")
+            print(f"{index:05d}:{pc:04x} ...     :{line}")
             return
         print(f"{index:05d}:{pc:04x} {opcodes[opcode][arg_type]:02x} ", end = "")
         if arg_type == IMPLIED:
@@ -272,40 +297,13 @@ class Assembler:
         else:
             print(f"{parsed_arg % 256:02x} {parsed_arg // 256:02x}:{line}")
 
-    # def dis2(self, index, pc, opcode, arg_type, parsed_arg, rel_dist):
-    #     print("{:05d}     {:04x} {:02x} ".format(index + 1, pc, opcodes[opcode][arg_type]), end = "")
-    #     if arg_type == IMPLIED:
-    #         print("      {}".format(opcode))
-    #     elif arg_type == IMMEDIATE:
-    #         print("{:02x}    {} #${:02x}".format(parsed_arg, opcode, parsed_arg))
-    #     elif arg_type == ZP:
-    #         print("{:02x}    {} ${:02x}".format(parsed_arg, opcode, parsed_arg))
-    #     elif arg_type == ZPX:
-    #         print("{:02x}    {} ${:02x},x".format(parsed_arg, opcode, parsed_arg))
-    #     elif arg_type == ZPY:
-    #         print("{:02x}    {} ${:02x},y".format(parsed_arg, opcode, parsed_arg))
-    #     elif arg_type == USELESS:
-    #         print("{:02x}    {} (${:02x},x)".format(parsed_arg, opcode, parsed_arg))
-    #     elif arg_type == INDIRECTY:
-    #         print("{:02x}    {} (${:02x}),y".format(parsed_arg, opcode, parsed_arg))
-    #     elif arg_type == ABSOLUTE:
-    #         print("{:02x} {:02x} {} ${:04x}".format(parsed_arg % 256, parsed_arg // 256, opcode, parsed_arg))
-    #     elif arg_type == RELATIVE:
-    #         if rel_dist > 127:
-    #             print("{:02x}    {} ${:04x}".format(rel_dist, opcode, pc - 254 + rel_dist))
-    #         else:
-    #             print("{:02x}    {} ${:04x}".format(rel_dist, opcode, pc + rel_dist))
-    #     elif arg_type == INDIRECT:
-    #         print("{:02x} {:02x} {} (${:04x})".format(parsed_arg % 256, parsed_arg // 256, opcode, parsed_arg))
-    #     elif arg_type == ABSOLUTEX:
-    #         print("{:02x} {:02x} {} ${:04x},x".format(parsed_arg % 256, parsed_arg // 256, opcode, parsed_arg))
-    #     elif arg_type == ABSOLUTEY:
-    #         print("{:02x} {:02x} {} ${:04x},y".format(parsed_arg % 256, parsed_arg // 256, opcode, parsed_arg))
-
     def show_labels(self):
         for label in self.labels:
-            if self.labels[label]["line"] > -1:
-                print(f"{label:12s}: ${self.labels[label]['value']:04x}")
+            if self.labels[label]["line_number"] > -1:
+                print(f"{label:12s}: ${self.labels[label]['value']:04x}",end="")
+                if "refs" in self.labels[label]:
+                    print(f" {self.labels[label]['refs']}", end="")
+                print()
 
     def poke(self, adr, byte):
         "Writes a byte into 'memory' and updates self.min_memory and self.max_memory"
@@ -333,5 +331,5 @@ file = open("test.asm")
 asm = Assembler(file.read())
 file.close()
 asm.assemble(True) # Print compiled program
-# asm.show_labels() # Print labels
+asm.show_labels() # Print labels
 # asm.write_hexdump()
