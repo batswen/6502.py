@@ -221,7 +221,7 @@ class Assembler:
                     let_label = let_label.strip()
                     value = self.expression(let_value)
                     if org and value < 256:
-                        raise Exception(f"ZP labels must be declared before org in line {line_number}.")
+                        raise Exception(f"ZP labels must be declared before org")
                     self.labels[let_label] = self.new_label(value)
                     
                 elif opcode == "byte":
@@ -237,7 +237,7 @@ class Assembler:
                 continue
 
             if opcode not in opcodes:
-                raise Exception(f"Unkonwn opcode '{opcode}' in line {line_number}.")
+                raise Exception(f"Unkonwn opcode '{opcode}'")
 
             arg_type, parsed_arg = self.test_arg(arg)
             rel_dist = 0
@@ -251,7 +251,7 @@ class Assembler:
                     else:
                         rel_dist = parsed_arg - pc
             if not arg_type in opcodes[opcode]:
-                raise Exception(f"Unkonwn addressing mode '{opcode}' in line {line_number}.")
+                raise Exception(f"Unkonwn addressing mode '{opcode}'")
   
             if run == 2:
                 self.poke(pc, opcodes[opcode][arg_type])
@@ -263,7 +263,7 @@ class Assembler:
                 if arg_type == RELATIVE:
                     self.poke(pc + 1, rel_dist)
                     if rel_dist > 255 or rel_dist < 0:
-                        raise Exception(f"Branch error in line {line_number}.")
+                        raise Exception(f"Branch error")
                 elif arg_type < ABSOLUTE:
                     self.poke(pc + 1, parsed_arg)
                 else:
@@ -279,9 +279,9 @@ class Assembler:
         if run == 1:
             for label in self.labels:
                 if self.labels[label]["value"] == 65535:
-                    raise Exception(f"Unknwon label '{label}' in line {self.labels[label]['line_number']}.")
+                    raise Exception(f"Unknwon label '{label}'")
         if not org:
-            raise Exception("No base address.")
+            raise Exception("No base address")
 
     def dis(self, index, pc, opcode, arg_type, parsed_arg, rel_dist, line):
         if opcode == "byte":
@@ -300,10 +300,11 @@ class Assembler:
     def show_labels(self):
         for label in self.labels:
             if self.labels[label]["line_number"] > -1:
-                print(f"{label:12s}: ${self.labels[label]['value']:04x}",end="")
-                if "refs" in self.labels[label]:
-                    print(f" {self.labels[label]['refs']}", end="")
-                print()
+                print(f"{label:12s}: ${self.labels[label]['value']:04x} {self.labels[label]['refs']}")
+    def show_unused_labels(self):
+        for label in self.labels:
+            if self.labels[label]["line_number"] > -1 and len(self.labels[label]["refs"]) == 0:
+                print(f"{label:12s}: ${self.labels[label]['value']:04x}")
 
     def poke(self, adr, byte):
         "Writes a byte into 'memory' and updates self.min_memory and self.max_memory"
@@ -319,17 +320,18 @@ class Assembler:
         adr = self.min_memory
         # print(f"{adr % 256:02x}{adr // 256:02x}",end="")
         while adr < self.max_memory:
-            print(f"{adr:04x} ", end="")
+            print(f"{adr:04x}:", end="")
             for i in range(8):
                 if adr + i >= self.max_memory:
                     continue
-                print(f" {self.memory[adr + i]:02x}", end="")
+                print(f"{self.memory[adr + i]:02x} ", end="")
             adr += 8
             print()
     
 file = open("test.asm")
 asm = Assembler(file.read())
 file.close()
-asm.assemble(True) # Print compiled program
-asm.show_labels() # Print labels
+asm.assemble(False) # Print compiled program
+# asm.show_labels() # Print labels
+asm.show_unused_labels()
 # asm.write_hexdump()
