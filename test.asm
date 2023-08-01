@@ -1,3 +1,4 @@
+        let bla=2
 ;test
 let Abcdef= 5
 let test      =         1234
@@ -54,7 +55,7 @@ sta ($5f),y;testcomment
  brk;testcomment
 ;testcomment
 let z= 700
-    byte 8,0, 0, $ff,>irq,<Abcdef
+    byte 8,bla, 0, $ff,>irq,<Abcdef
     .by 169
     byt 255
     rts

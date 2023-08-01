@@ -133,19 +133,19 @@ class Assembler:
                 raise Exception(f"Immediate value error")
             return [IMMEDIATE, value]
         if arg.startswith("("):
-            if arg.endswith(",x)"):
+            if arg.lower().endswith(",x)"):
                 return [USELESS, self.expression(arg[1:-3])]
-            if arg.endswith("),y"):
+            if arg.lower().endswith("),y"):
                 return [INDIRECTY, self.expression(arg[1:-3])]
             if arg.endswith(")"):
                 return [INDIRECT, self.expression(arg[1:-1])]
-        if arg.endswith(",x"):
+        if arg.lower().endswith(",x"):
             value = self.expression(arg[:-2])
             if value <= 255:
                 return [ZPX, value]
             else:
                 return [ABSOLUTEX, value]
-        if arg.endswith(",y"):
+        if arg.lower().endswith(",y"):
             value = self.expression(arg[:-2])
             if value <= 255:
                 return [ZPY, value]
@@ -242,7 +242,7 @@ class Assembler:
             if opcode not in opcodes:
                 raise Exception(f"Unkonwn opcode '{opcode}'")
 
-            arg_type, parsed_arg = self.test_arg(arg.lower())
+            arg_type, parsed_arg = self.test_arg(arg)
             rel_dist = 0
             if arg_type == ABSOLUTE:
                 if parsed_arg <= 255 and ZP in opcodes[opcode]:
@@ -338,7 +338,7 @@ if __name__ == "__main__":
     asm = Assembler(file.read())
     file.close()
     asm.assemble(False) # Print compiled program
-    # asm.show_labels() # Print labels
+    asm.show_labels() # Print labels
     print("\n\nUnused labels:")
     asm.show_unused_labels()
     # asm.write_hexdump()
