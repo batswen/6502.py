@@ -100,25 +100,25 @@ class Assembler:
                 dec = int(arg[1:], 16)
             except:
                 raise Exception(f"Not a hex number")
-            if len(arg[1:]) > 4:
+            if dec > 65535:
                 raise Exception(f"Illegal quantity")
-            return int(arg[1:], 16)
+            return dec
         elif arg.startswith("%"):             #%bin
             try:
                 dec = int(arg[1:], 2)
             except:
                 raise Exception(f"Not a binary number")
-            if len(arg[1:]) > 16:
+            if dec > 65535:
                 raise Exception(f"Illegal quantity")
-            return int(arg[1:], 2)
+            return dec
         else:                                 #dec
             try:
                 dec = int(arg)
             except:
                 raise Exception(f"Not a decimal number")
-            if int(arg) > 65535:
+            if dec > 65535:
                 raise Exception(f"Illegal quantity")
-            return int(arg)
+            return dec
 
     def expression(self, arg):
         return self.number(arg)
