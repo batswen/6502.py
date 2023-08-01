@@ -122,7 +122,7 @@ class Assembler:
 
     def expression(self, arg):
         return self.number(arg)
-            
+
     def test_arg(self, arg):
         #print(f"test_arg '{arg}'")
         if arg == "":
@@ -210,8 +210,8 @@ class Assembler:
 
                 if opcode == "":
                     continue
-            if opcode in ["org", "let", "byte"]:
-                if opcode == "org":
+            if opcode in (".ba", "org", "let", ".by", "byt", "byte"):
+                if opcode in ("org", ".ba"):
                     pc = self.expression(arg)
                     if run == 2:
                         self.poke(pc, 0) # to set min_memory and max_memory
@@ -224,15 +224,18 @@ class Assembler:
                         raise Exception(f"ZP labels must be declared before org")
                     self.labels[let_label] = self.new_label(value)
                     
-                elif opcode == "byte":
+                elif opcode in (".by", "byt", "byte"):
                     if run == 2:
                         arg_bytes = arg.split(",")
                         index = 0
                         for arg_byte in arg_bytes:
-                            self.poke(pc + index, self.expression(arg_byte.strip()))
+                            byte = self.expression(arg_byte.strip())
+                            if byte > 255:
+                                raise Exception("Byte must be in range 0..255")
+                            self.poke(pc + index, byte)
                             index += 1
                         if verbose:
-                            self.dis(line_number, pc, "byte", 0, self.expression(arg_bytes[0]), 0, self.source_line)
+                            self.dis(line_number, pc, opcode, 0, self.expression(arg_bytes[0]), 0, self.source_line)
                     pc += arg.count(",") + 1
                 continue
 
@@ -250,8 +253,10 @@ class Assembler:
                         rel_dist = 254 - (pc - parsed_arg)
                     else:
                         rel_dist = parsed_arg - pc
+                    if run == 2 and rel_dist > 255 or rel_dist < 0:
+                        raise Exception(f"Branch error")
             if not arg_type in opcodes[opcode]:
-                raise Exception(f"Unkonwn addressing mode '{opcode}'")
+                raise Exception(f"Unkonwn addressing mode")
   
             if run == 2:
                 self.poke(pc, opcodes[opcode][arg_type])
@@ -262,8 +267,6 @@ class Assembler:
                 #    pass
                 if arg_type == RELATIVE:
                     self.poke(pc + 1, rel_dist)
-                    if rel_dist > 255 or rel_dist < 0:
-                        raise Exception(f"Branch error")
                 elif arg_type < ABSOLUTE:
                     self.poke(pc + 1, parsed_arg)
                 else:
@@ -312,6 +315,8 @@ class Assembler:
             self.min_memory = adr
         if adr > self.max_memory:
             self.max_memory = adr
+        if byte > 255:
+            raise Exception("byte must be in 0..255")
         self.memory[adr] = byte
 
     def write_binary(self, filename):
@@ -328,10 +333,12 @@ class Assembler:
             adr += 8
             print()
     
-file = open("test.asm")
-asm = Assembler(file.read())
-file.close()
-asm.assemble(False) # Print compiled program
-# asm.show_labels() # Print labels
-asm.show_unused_labels()
-# asm.write_hexdump()
+if __name__ == "__main__":
+    file = open("test.asm")
+    asm = Assembler(file.read())
+    file.close()
+    asm.assemble(False) # Print compiled program
+    # asm.show_labels() # Print labels
+    print("\n\nUnused labels:")
+    asm.show_unused_labels()
+    # asm.write_hexdump()

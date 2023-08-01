@@ -41,11 +41,11 @@ next:
     brk
 ;    xyz
     brk\ brk   \nop\ nop
-    test_ende:brk
+    test_ende:byt %101100
 
     ;testcomment
 ;testcomment
- org $c522;testcomment
+ .ba $c068;testcomment
 again:;testcomment
  lda $01fc,y;testcomment
 sta ($5f),y;testcomment
@@ -55,4 +55,6 @@ sta ($5f),y;testcomment
 ;testcomment
 let z= 700
     byte 8,0, 0, $ff,>irq,<Abcdef
+    .by 169
+    byt 255
     rts
