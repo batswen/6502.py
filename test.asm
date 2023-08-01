@@ -35,7 +35,7 @@ next:
     jmp (test_ende)
     jmp ($308)
     jsr adresse
-    lda 10000,x
+    lda 10000,X
     sta 45054,y;hihi
     jmp again
     brk

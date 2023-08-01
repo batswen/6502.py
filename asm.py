@@ -242,7 +242,7 @@ class Assembler:
             if opcode not in opcodes:
                 raise Exception(f"Unkonwn opcode '{opcode}'")
 
-            arg_type, parsed_arg = self.test_arg(arg)
+            arg_type, parsed_arg = self.test_arg(arg.lower())
             rel_dist = 0
             if arg_type == ABSOLUTE:
                 if parsed_arg <= 255 and ZP in opcodes[opcode]:
