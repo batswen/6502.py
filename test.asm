@@ -38,6 +38,7 @@ next:
     jsr adresse
     lda $1000 + %11*  $10f  ,X ;!
     sta 45054,y;hihi
+    jsr label
     jmp again
     brk
 ;    xyz
@@ -59,3 +60,6 @@ let z= 700
     ;.by 169
     ;byt 255
     rts
+org $a600
+
+label nop:ldx#%11:brk

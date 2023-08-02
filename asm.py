@@ -107,13 +107,13 @@ class Lexer:
         self.advance()
     def get_int(self):
         result = ""
-        while self.current_char is not None and self.current_char in "0123456789abcdef":
+        while self.current_char is not None and self.current_char.lower() in "0123456789abcdef":
             result = result + self.current_char
             self.advance()
         return result
     def get_label_or_opcode(self):
         result = ""
-        while self.current_char is not None and (self.current_char.isalpha() or self.current_char in ("_", ".")):
+        while self.current_char is not None and (self.current_char.isalnum() or self.current_char in ("_", ".")):
             result += self.current_char
             self.advance()
         return result
@@ -297,7 +297,10 @@ class Assembler:
         if label not in self.labels:
             self.labels[label] = { "value": 0xffff, "line": self.line }
         self.labels[label]["value"] = arg
-    
+    def dump_labels(self):
+        for label in self.labels:
+            if self.labels[label]["line"] != -1:
+                print(f"{label:16}=${self.labels[label]['value']:04x}")
     def compile(self):
         while self.current_token.token_type != EOF:
             token = self.current_token
@@ -311,8 +314,7 @@ class Assembler:
                 continue
             if token.token_type == LABEL:
                 self.skip(LABEL)
-                if self.run == 1:
-                    self.set_label(token.value, self.pc)
+                self.set_label(token.value, self.pc)
                 continue
             if token.token_type == ORG:
                 self.skip(ORG)
@@ -391,10 +393,11 @@ class Assembler:
             arg_low = arg % 256
             arg_high = arg // 256
             arg_relative = 0
-            if arg < self.pc:
-                arg_relative = 254 - (self.pc - arg)
+
+            if arg <= self.pc:
+                arg_relative = 254 - (self.pc - arg) 
             else:
-                arg_relative = arg - self.pc
+                arg_relative = arg - self.pc - 2
         if self.run == 2:
             if mode == IMMEDIATE:
                 print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg:02x}    {token.value} #${arg:02x}")
@@ -444,8 +447,9 @@ file = open("test.asm")
 source = file.read()
 file.close()
 lexer = Lexer(source)
-# print(lexer.get_tokens())
+print(lexer.get_tokens())
 
 ex = Assembler(lexer, labels)
 
 ex.assemble()
+ex.dump_labels()
