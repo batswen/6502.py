@@ -149,7 +149,7 @@ class Assembler:
             if token.test(FILL):
                 self.skip(FILL)
                 fill_amount = self.expression()
-                if fill_amount > 255:
+                if fill_amount > 255 or fill_amount == 0:
                     raise Exception("Illegal quantity")
                 self.skip(COMMA)
                 fill_byte = self.expression()

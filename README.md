@@ -3,11 +3,15 @@ An assembler for the 6502 cpu written in python
 
 Start: python asm.py
 
+## comments
+Comments start with ;
+
 ## opcodes
 Case insensitive
 
 ## pseudo opcodes
-Case insensitive
+Case insensitive, except for strings
+
 * org/base/.ba adr or label: set start address
 * label = number: define label
 * word expr{, expr}
@@ -24,4 +28,8 @@ Must start with a letter or underscore or dot (a-z_.), then (a-z0-9_.). Minimum 
 Numbers must be in range 0..65535 or 0..255 depending on the command.
 Hex numbers must start with $, binary numbers with a %.
 
-Use +,-,*,/ for addition, subtraction, multiplication and division
+Use +,-,*,/ for addition, subtraction, multiplication and division; and, or, eor = &, |, ^
+
+## Future plans
+* Float (FLPT and MFLPT)
+* Unicode to PETSCII conversion
