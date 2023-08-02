@@ -161,7 +161,7 @@ class Assembler:
             # zp,x/abs,x
             if self.current_token.token_type == COMMAX:
                 self.skip(COMMAX)
-                if arg <= 255:
+                if arg <= 255 and ZP in OPCODES[token.value]:
                     self.asm_command(token, ZPX, arg)
                 else:
                     self.asm_command(token, ABSOLUTEX, arg)
@@ -169,13 +169,13 @@ class Assembler:
             # zp,y/abs,y
             if self.current_token.token_type == COMMAY:
                 self.skip(COMMAY)
-                if arg <= 255:
+                if arg <= 255 and ZP in OPCODES[token.value]:
                     self.asm_command(token, ZPY, arg)
                 else:
                     self.asm_command(token, ABSOLUTEY, arg)
                 continue
             # zp/abs
-            if arg <= 255:
+            if arg <= 255 and ZP in OPCODES[token.value]:
                 self.asm_command(token, ZP, arg)
             elif RELATIVE in OPCODES[token.value]:
                 self.asm_command(token, RELATIVE, arg)
@@ -194,7 +194,10 @@ class Assembler:
             else:
                 arg_relative = arg - self.pc - 2
         if self.run == 2:
-            if mode == IMMEDIATE:
+            if mode == IMPLIED:
+                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x}       {token.value}")
+            # zero page
+            elif mode == IMMEDIATE:
                 print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg:02x}    {token.value} #${arg:02x}")
             elif mode == ZP:
                 print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg:02x}    {token.value} ${arg:02x}")
@@ -206,7 +209,10 @@ class Assembler:
                 print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg:02x}    {token.value} (${arg:02x},x)")
             elif mode == INDIRECTY:
                 print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg:02x}    {token.value} (${arg:02x}),y")
-                
+            # relative
+            elif mode == RELATIVE:
+                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg_relative:02x}    {token.value} ${arg:04x}")
+            # absolute
             elif mode == ABSOLUTE:
                 print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg_low:02x} {arg_high:02x} {token.value} ${arg:04x}")
             elif mode == ABSOLUTEX:
@@ -215,10 +221,6 @@ class Assembler:
                 print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg_low:02x} {arg_high:02x} {token.value} ${arg:04x},y")
             elif mode == INDIRECT:
                 print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg_low:02x} {arg_high:02x} {token.value} (${arg:04x})")
-            elif mode == RELATIVE:
-                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg_relative:02x}    {token.value} ${arg:04x}")
-            elif mode == IMPLIED:
-                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x}       {token.value}")
         self.pc += 1
         if mode > IMPLIED:
             self.pc += 1

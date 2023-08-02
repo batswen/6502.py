@@ -36,6 +36,7 @@ next:
     jmp (test_ende)
     jmp ($308)
     jsr adresse
+    jmp 100
     lda $1000 + %11*  $10f  ,X ;!
     sta 45054,y;hihi
     jsr label
