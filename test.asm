@@ -65,8 +65,9 @@ lda #0
     .by $0a,$b, $a + 2
     fill 5, 0
     fill 1, 255
+    word 0,1,irq
 byt 255
     rts
-    org z; ORG with label
 
+    org z; ORG with label
 label nop:ldx#%11:brk

@@ -23,6 +23,14 @@ class Assembler:
             self.max_memory = address
         self.memory[address] = content
 
+    def poke_word(self, address, content):
+        if address < self.min_memory:
+            self.min_memory = address
+        if address + 1> self.max_memory:
+            self.max_memory = address
+        self.memory[address] = content % 256
+        self.memory[address + 1] = content // 256
+
     def assemble(self, verbose):
         self.verbose = verbose
         try:
@@ -182,6 +190,31 @@ class Assembler:
                         break
                     self.skip(COMMA)
                 continue
+            if token.test(WORD):
+                word_line = token.line
+                word_pc = self.pc
+                word_data = []
+                self.skip(WORD)
+                while self.current_token.token_type in (LABEL, NUMBER, GT, LT):
+                    value = self.expression()
+                    if self.run == 2:
+                        self.poke_word(self.pc, value)
+                        word_data.append(value)
+                    self.pc += 2
+                    if not self.current_token.test(COMMA):
+                        if self.run == 2:
+                            print(f"{word_line:05} {word_pc:04x}-{self.pc - 1:04x}     word ${word_data[0]:04x}", end="")
+                            for data in word_data[1:]:
+                                print(f", ${data:04x}",end="")
+                            print()
+                        break
+                    self.skip(COMMA)
+                continue
+            if token.test(TEXT):
+                self.skip(TEXT)
+                print(f'text "{self.current_token.value}" - NOT IMPLEMENTED')
+                self.skip(STRING)
+                continue
             if token.test(LABEL):
                 self.skip(LABEL)
                 if self.current_token.test(ASSIGN):
@@ -280,7 +313,6 @@ class Assembler:
         if arg is not None:
             arg_low = arg % 256
             arg_high = arg // 256
-            arg_relative = 0
             if mode == RELATIVE:
                 if arg <= self.pc:
                     arg_low = 254 - (self.pc - arg)

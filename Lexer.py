@@ -36,6 +36,13 @@ class Lexer:
             result += self.current_char
             self.advance()
         return result
+    def get_string(self):
+        result = ""
+        while self.current_char is not None and self.current_char != "\"":
+            result += self.current_char
+            self.advance()
+        self.advance()
+        return result
     def next_token(self):
         if self.current_char is None:
             return Token(self.line, EOF, EOF)
@@ -64,6 +71,11 @@ class Lexer:
             if dec > 65535:
                 raise Exception("Illegal quantity")
             return Token(self.line, NUMBER, dec)
+
+        if self.current_char == "\"":
+            self.advance()
+            text = self.get_string()
+            return Token(self.line, STRING, text)
 
         if self.current_char == "+":
             self.advance()
@@ -118,17 +130,21 @@ class Lexer:
             self.line += 1
             return Token(self.line - 1, NEWLINE, NEWLINE)
         if self.current_char.isalpha() or self.current_char in ("_", "."):
-            text = self.get_label_or_opcode().lower()
-            if text in OPCODES:
+            text = self.get_label_or_opcode()
+            if text.lower() in OPCODES:
                 return Token(self.line, OPCODE, text.lower())
-            elif text in ("org", "base", ".ba"):
+            elif text.lower() in ("org", "base", ".ba"):
                 return Token(self.line, ORG, ORG)
-            elif text in ("let"):
-                return Token(self.line, LET, LET)
-            elif text in ("byte", "byt", ".by"):
+            # elif text.lower() in ("let"):
+            #     return Token(self.line, LET, LET)
+            elif text.lower() in ("byte", "byt", ".by"):
                 return Token(self.line, BYTE, BYTE)
-            elif text in ("fill"):
+            elif text.lower() == "fill":
                 return Token(self.line, FILL, FILL)
+            elif text.lower() == "word":
+                return Token(self.line, WORD, WORD)
+            elif text.lower() == "text":
+                return Token(self.line, TEXT, TEXT)
             return Token(self.line, LABEL, text)
         raise Exception(f"Syntax ({self.current_char})")
     def get_tokens(self):
@@ -193,14 +209,29 @@ if __name__ == "__main__":
         Token(4, EOF, EOF)
     ]
 
-    lexer = Lexer("byte 0, xx,y, label")
+    lexer = Lexer("byte 0, xx,y, label:word 0")
     tokens = lexer.get_tokens()
-    assert len(tokens) == 9
+    assert len(tokens) == 12
     assert tokens == [
         Token(1, BYTE, BYTE), Token(1, NUMBER, 0), Token(1, COMMA, COMMA),
         Token(1, LABEL, "xx"), Token(1, COMMA, COMMA), Token(1, LABEL, "y"),
         Token(1, COMMA, COMMA), Token(1, LABEL, "label"),
+        Token(1, COLON, COLON),
+        Token(1, WORD, WORD), Token(1, NUMBER, 0),
         Token(1, EOF, EOF)
+    ]
+
+    lexer = Lexer('text "abcdef@123": label dey:rts;comment')
+    tokens = lexer.get_tokens()
+    assert len(tokens) == 9
+    assert tokens == [
+        Token(1, TEXT, TEXT), Token(1, STRING, "abcdef@123"),
+        Token(1, COLON, COLON),
+        Token(1, LABEL, "label"), Token(1, OPCODE, "dey"),
+        Token(1, COLON, COLON),
+        Token(1, OPCODE, "rts"),
+        Token(1, NEWLINE, NEWLINE),
+        Token(2, EOF, EOF)
     ]
 
     print("Lexer: Ok")

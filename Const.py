@@ -13,7 +13,7 @@ COLON=":";NEWLINE="Newline"
 ASSIGN="Assign"
 ORG="Org"
 FILL="Fill"
-BYTE="Byte";WORD="Word";TEXT="Text"
+BYTE="Byte";WORD="Word";TEXT="Text";STRING="String"
 OPCODE="Opcode"
 LABEL="Label"
 
