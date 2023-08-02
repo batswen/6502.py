@@ -5,11 +5,11 @@ let test      =         1234
     let adresse =$fff0
     org $c000
     SEi
-    lda #<irq\STA $314
-    lda #>irq \ sta $315
-    lda #     147\    jsr basout
+    lda #<irq:STA $314
+    lda #>irq : sta $315
+    lda #     147:    jsr basout
 clI
-    byte 96;rts
+    rts
 irq:jmp $ea31
     lda #%11111110
     ldx #254
@@ -20,10 +20,10 @@ irq:jmp $ea31
     lda Abcdef
     lda Abcdef,x
     lda (Abcdef),y
-    nop\ldx Abcdef,y
+    nop:ldx Abcdef,y
     let x=500
-back:
-unused_label:
+back
+unused_label
 let y=600
     nop
     bne back
@@ -41,12 +41,12 @@ next:
     jmp again
     brk
 ;    xyz
-    brk\ brk   \nop\ nop
-    test_ende:byt %101100
+    brk: brk   :nop: nop
+    test_ende:;byt %101100
 
     ;testcomment
 ;testcomment
- .ba $c068;testcomment
+ ;.ba $c068;testcomment
 again:;testcomment
  lda $01fc,y;testcomment
 sta ($5f),y;testcomment
@@ -55,7 +55,7 @@ sta ($5f),y;testcomment
  brk;testcomment
 ;testcomment
 let z= 700
-    byte 8,bla, 0, $ff,>irq,<Abcdef
-    .by 169
-    byt 255
+    ;byte 8,bla, 0, $ff,>irq,<Abcdef
+    ;.by 169
+    ;byt 255
     rts

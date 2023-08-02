@@ -2,7 +2,19 @@ IMPLIED=0 # 1 Byte (implied and akku)
 RELATIVE=1; ZP=2; ZPX=3; ZPY=4; USELESS=5; INDIRECTY=6; IMMEDIATE=7 # 2 Byte 
 ABSOLUTE=10; ABSOLUTEX=11; ABSOLUTEY=12; INDIRECT=13 # 3 Byte
 
-opcodes = {
+EOF="EOF"
+LET="LET"
+NUMBER = "Number"
+PLUS ="Plus";MINUS="Minus";MUL="Mul";DIV="Div";LPAREN="LParen";RPAREN="RParen"
+LT="<";GT=">"
+HASH="#";COMMAX=",x";COMMAY=",y"
+COLON=":";NEWLINE="Newline"
+ASSIGN="Assign"
+ORG="Org"
+OPCODE="Opcode"
+LABEL="Label"
+
+OPCODES = {
     "adc": { USELESS: 0x61, ZP: 0x65, IMMEDIATE: 0x69, ABSOLUTE: 0x6d, INDIRECTY: 0x71, ZPX: 0x75, ABSOLUTEY: 0x79, ABSOLUTEX: 0x7d },
     "and": { USELESS: 0x21, ZP: 0x25, IMMEDIATE: 0x29, ABSOLUTE: 0x2d, INDIRECTY: 0x31, ZPX: 0x35, ABSOLUTEY: 0x39, ABSOLUTEX: 0x3d },
     "asl": { ABSOLUTE: 0x0e, ZP: 0x06, IMPLIED: 0x0a, ZPX: 0x16, ABSOLUTEX: 0x1e },
@@ -60,285 +72,371 @@ opcodes = {
     "txs": { IMPLIED: 0x9a },
     "tya": { IMPLIED: 0x98 }
 }
-class Assembler:
+class Token:
+    def __init__(self, line, token_type, value):
+        self.token_type = token_type
+        self.value = value
+        self.line = line
+        # print(self)
+    def __str__(self):
+        return f'Token ({self.line}, "{self.token_type}", "{self.value}")'
+    def __repr__(self):
+        return self.__str__()
+class Lexer:
     def __init__(self, source):
-        self.lines = source.split("\n")
-        self.source_line = ""
-        self.line = 0
-        self.tokens = []
-        self.memory = bytearray(65536)
-        self.min_memory = 65536
-        self.max_memory = -1
-        self.labels = {
-            # line_number = -1 -> defined here; ignored by ".show_labels()"
-            # Kernal addresses for all C= computers
-            "basout": { "value": 0xffd2, "line_number": -1 }, "plot": { "value": 0xfff0, "line_number": -1 },
-            "open": { "value": 0xffc0, "line_number": -1 }, "close": { "value": 0xffc3, "line_number": -1 }, "setlfs": { "value": 0xffba, "line_number": -1 }, "setnam": { "value": 0xffbd, "line_number": -1 },
-            "load": { "value": 0xffd5, "line_number": -1 }, "save": { "value": 0xffd8, "line_number": -1 },
-            # BASIC adr for C64
-            "strout": { "value": 0xab1e, "line_number": -1 }, "chkkom": { "value": 0xaefd, "line_number": -1 }, "frmevl":{ "value": 0xe257, "line_number": -1 },
-            "frmnum": { "value": 0xad8a, "line_number": -1 }, "getadr": { "value": 0xb7f7, "line_number": -1 }
-        }
-    def new_label(self, value):
-        return { "value": value, "line_number": self.line, "refs": [] }
-    def number(self, arg):
-        # print(f"number '{arg}'")
-        if arg.startswith("<"):               #low byte
-            return self.number(arg[1:]) % 256
-        if arg.startswith(">"):               #high byte
-            return self.number(arg[1:]) // 256
-        if arg[0].isalpha():                  #label
-            if arg not in self.labels: # forward ref
-                self.labels[arg] = self.new_label(65535)
-            if "refs" not in self.labels[arg]:
-                self.labels[arg]["refs"] = []
-            if self.line not in self.labels[arg]["refs"]:
-                self.labels[arg]["refs"].append(self.line)
-            return self.labels[arg]["value"]
-        if arg.startswith("$"):               #$hex
-            try:
-                dec = int(arg[1:], 16)
-            except:
-                raise Exception(f"Not a hex number")
-            if dec > 65535:
-                raise Exception(f"Illegal quantity")
-            return dec
-        elif arg.startswith("%"):             #%bin
-            try:
-                dec = int(arg[1:], 2)
-            except:
-                raise Exception(f"Not a binary number")
-            if dec > 65535:
-                raise Exception(f"Illegal quantity")
-            return dec
-        else:                                 #dec
-            try:
-                dec = int(arg)
-            except:
-                raise Exception(f"Not a decimal number")
-            if dec > 65535:
-                raise Exception(f"Illegal quantity")
-            return dec
+        self.reset()
+    def reset(self):
+        self.source = source
+        self.source_lines = source.split("\n")
+        self.position = -1
+        self.line = 1
+        self.current_char = None
+        self.advance()
+    def advance(self):
+        self.position += 1
+        if self.position < len(self.source):
+            self.current_char = self.source[self.position]
+        else:
+            self.current_char = None
+    def skip_whitespace(self):
+        while self.current_char is not None and self.current_char == " ":
+            self.advance()
+    def skip_comment(self):
+        while self.current_char is not None and self.current_char != "\n":
+            self.advance()
+        self.advance()
+    def get_int(self):
+        result = ""
+        while self.current_char is not None and self.current_char in "0123456789abcdef":
+            result = result + self.current_char
+            self.advance()
+        return result
+    def get_label_or_opcode(self):
+        result = ""
+        while self.current_char is not None and (self.current_char.isalpha() or self.current_char in ("_", ".")):
+            result += self.current_char
+            self.advance()
+        return result
+    def next_token(self):
+        if self.current_char is None:
+            return Token(self.line, EOF, EOF)
 
-    def expression(self, arg):
-        return self.number(arg)
+        while self.current_char == " ":
+            self.skip_whitespace()
+        if self.current_char == ";":
+            self.skip_comment()
+            self.line += 1
+            return Token(self.line - 1, NEWLINE, NEWLINE)
 
-    def test_arg(self, arg):
-        #print(f"test_arg '{arg}'")
-        if arg == "":
-            return [IMPLIED, 0]
-        if arg.startswith("#"):
-            value = self.expression(arg[1:])
-            if value > 255:
-                raise Exception(f"Immediate value error")
-            return [IMMEDIATE, value]
-        if arg.startswith("("):
-            if arg.lower().endswith(",x)"):
-                return [USELESS, self.expression(arg[1:-3])]
-            if arg.lower().endswith("),y"):
-                return [INDIRECTY, self.expression(arg[1:-3])]
-            if arg.endswith(")"):
-                return [INDIRECT, self.expression(arg[1:-1])]
-        if arg.lower().endswith(",x"):
-            value = self.expression(arg[:-2])
-            if value <= 255:
-                return [ZPX, value]
-            else:
-                return [ABSOLUTEX, value]
-        if arg.lower().endswith(",y"):
-            value = self.expression(arg[:-2])
-            if value <= 255:
-                return [ZPY, value]
-            else:
-                return [ABSOLUTEY, value]
-        return [ABSOLUTE, self.expression(arg)] # ABS/ZP or REL
+        if self.current_char.isdigit() or self.current_char in ("$", "%"):
+            if self.current_char == "$":
+                self.advance()
+                return Token(self.line, NUMBER, int(self.get_int(), 16))
+            if self.current_char == "%":
+                self.advance()
+                return Token(self.line, NUMBER, int(self.get_int(), 2))
+            return Token(self.line, NUMBER, int(self.get_int()))
 
-    def parse(self):
-        lines = []
-        line_number = 1
-        for line in self.lines:
-            if ";" in line:
-                line = line.split(";")[0]
-            while "\\" in line:
-                lines.append({"line_number": line_number, "line": line.split("\\")[0].strip()})
-                line = line.split("\\", 1)[1]
-            if line != "":
-                lines.append({"line_number": line_number, "line": line.strip()})
-            line_number += 1
-        for i, source_line in enumerate(lines):
-            label = ""
-            opcode = ""
-            arg = ""
-            line = source_line["line"]
+        if self.current_char == "+":
+            self.advance()
+            return Token(self.line, PLUS, PLUS)
+        if self.current_char == "-":
+            self.advance()
+            return Token(self.line, MINUS, MINUS)
+        if self.current_char == "*":
+            self.advance()
+            return Token(self.line, MUL, MUL)
+        if self.current_char == "/":
+            self.advance()
+            return Token(self.line, DIV, DIV)
+        
+        if self.current_char == ",":
+            self.advance()
+            if self.current_char.lower() == "x":
+                self.advance()
+                return Token(self.line, COMMAX, COMMAX)
+            if self.current_char.lower() == "y":
+                self.advance()
+                return Token(self.line, COMMAY, COMMAY)
+        if self.current_char == "#":
+            self.advance()
+            return Token(self.line, HASH, HASH)
 
-            if ":" in line:
-                label = line.split(":")[0].strip()
-                line = line.split(":")[1]
-            line = line.strip()
-            if " " in line:
-                opcode = line.split(" ")[0].lower()
-                arg = line.split(" ", 1)[1]
-            else:
-                opcode = line.lower()
-                arg = ""
-
-            if label != "" or opcode != "":
-                self.tokens.append({ "line_number": source_line["line_number"], "label": label, "opcode": opcode, "arg": arg, "source_line": line })
-        # print(self.tokens)
-    def assemble(self, verbose):
+        if self.current_char == "(":
+            self.advance()
+            return Token(self.line, LPAREN, LPAREN)
+        if self.current_char == ")":
+            self.advance()
+            return Token(self.line, RPAREN, RPAREN)
+        if self.current_char == "<":
+            self.advance()
+            return Token(self.line, LT, LT)
+        if self.current_char == ">":
+            self.advance()
+            return Token(self.line, GT, GT)
+        if self.current_char == "=":
+            self.advance()
+            return Token(self.line, ASSIGN, ASSIGN)
+        if self.current_char == ":":
+            self.advance()
+            return Token(self.line, COLON, COLON)
+        if self.current_char == "\n":
+            self.advance()
+            self.line += 1
+            return Token(self.line - 1, NEWLINE, NEWLINE)
+        if self.current_char.isalpha() or self.current_char in ("_", "."):
+            text = self.get_label_or_opcode()
+            if text.lower() in OPCODES:
+                return Token(self.line, OPCODE, text.lower())
+            if text.lower() in ("org", "base", ".ba"):
+                return Token(self.line, ORG, ORG)
+            if text.lower() in ("let"):
+                return Token(self.line, LET, LET)
+            return Token(self.line, LABEL, text)
+        raise Exception(f"Syntax ({self.current_char})")
+    def get_tokens(self):
         try:
-            self.parse()
-            self.do(1, verbose)
-            self.do(2, verbose)
+            result = []
+            while True:
+                token = self.next_token()
+                result.append(token)
+                if (token.token_type == EOF):
+                    break
+            return result
+        except Exception as e:
+            print(f"{e} in {self.line}")
+class Assembler:
+    def __init__(self, lexer, labels):
+        self.lexer = lexer
+        self.labels = labels
+        self.pc = 0
+        self.current_token = self.lexer.next_token()
+        self.line = self.current_token.line
+        self.run = 1
+    def assemble(self):
+        try:
+            self.lexer.reset()
+            self.pc = 0
+            self.current_token = self.lexer.next_token()
+            self.line = self.current_token.line
+            print("Pass 1")
+            self.run = 1
+            self.compile() # pass 1: define labels
 
-            print(f"Code: ${self.min_memory:04x} - ${self.max_memory - 1:04x}")
-        except Exception as arg:
-            print(f"Error: '{arg}' in line: {self.line}: '{self.source_line}'")
-    def do(self, run, verbose):
-        pc = 0
-        org = False
-        for token in self.tokens:
-            line_number = token["line_number"]
-            self.line = line_number
-            label = token["label"]
-            opcode = token["opcode"]
-            arg = token["arg"]
-            self.source_line = token["source_line"]
-            if label != "":
-                if run == 1:
-                    self.labels[label] = self.new_label(pc)
+            self.lexer.reset()
+            self.pc = 0
+            self.current_token = self.lexer.next_token()
+            self.line = self.current_token.line
+            print("Pass 2")
+            self.run = 2
+            self.compile() # pass 2: assemble
+        except Exception as e:
+            print(f"{e} in {self.line}")
 
-                if opcode == "":
-                    continue
-            if opcode in (".ba", "org", "let", ".by", "byt", "byte"):
-                if opcode in ("org", ".ba"):
-                    pc = self.expression(arg)
-                    if run == 2:
-                        self.poke(pc, 0) # to set min_memory and max_memory
-                    org = True
-                elif opcode == "let" and run == 1:
-                    let_label, let_value = arg.split("=")
-                    let_label = let_label.strip()
-                    value = self.expression(let_value)
-                    if org and value < 256:
-                        raise Exception(f"ZP labels must be declared before org")
-                    self.labels[let_label] = self.new_label(value)
-                    
-                elif opcode in (".by", "byt", "byte"):
-                    if run == 2:
-                        arg_bytes = arg.split(",")
-                        index = 0
-                        for arg_byte in arg_bytes:
-                            byte = self.expression(arg_byte.strip())
-                            if byte > 255:
-                                raise Exception("Byte must be in range 0..255")
-                            self.poke(pc + index, byte)
-                            index += 1
-                        if verbose:
-                            self.dis(line_number, pc, opcode, 0, self.expression(arg_bytes[0]), 0, self.source_line)
-                    pc += arg.count(",") + 1
+    def skip(self, token_type):
+        if self.current_token.token_type == token_type:
+            self.current_token = self.lexer.next_token()
+            self.line = self.current_token.line
+        else:
+            raise Exception(f"Syntax (Expected: {token_type}, got: {self.current_token.token_type})")
+    def factor(self):
+        # print("factor",self.current_token)
+        if self.current_token.token_type == LPAREN:
+            self.skip(LPAREN)
+            result = self.expression()
+            self.skip(RPAREN)
+            return result
+        if self.current_token.token_type == NUMBER:
+            token = self.current_token
+            self.skip(NUMBER)
+            return token.value
+        if self.current_token.token_type == LT:
+            self.skip(LT)
+            return self.expression() % 256
+        if self.current_token.token_type == GT:
+            self.skip(GT)
+            return self.expression() // 256
+        if self.current_token.token_type == LABEL:
+            token = self.current_token
+            self.skip(LABEL)
+            if token.value not in self.labels:
+                self.labels[token.value] = { "value": 0xffff, "line": self.line }
+            return self.labels[token.value]["value"]
+        return None
+    def term(self):
+        result = self.factor()
+        while self.current_token.token_type in (MUL, DIV):
+            if self.current_token.token_type == MUL:
+                self.skip(MUL)
+                result *= self.factor()
+            else:
+                self.skip(DIV)
+                result /= self.factor()
+        return result
+    def expression(self):
+        
+        result = self.term()
+        while self.current_token.token_type in (PLUS, MINUS):
+            if self.current_token.token_type == PLUS:
+                self.skip(PLUS)
+                result += self.term()
+            else:
+                self.skip(MINUS)
+                result -= self.term()
+        return result
+    def set_label(self, label, arg):
+        if label not in self.labels:
+            self.labels[label] = { "value": 0xffff, "line": self.line }
+        self.labels[label]["value"] = arg
+    
+    def compile(self):
+        while self.current_token.token_type != EOF:
+            token = self.current_token
+            if token.line != self.line:
+                print(self.line,token)
+            if token.token_type == NEWLINE:
+                self.skip(NEWLINE)
+                continue
+            if token.token_type == COLON:
+                self.skip(COLON)
+                continue
+            if token.token_type == LABEL:
+                self.skip(LABEL)
+                if self.run == 1:
+                    self.set_label(token.value, self.pc)
+                continue
+            if token.token_type == ORG:
+                self.skip(ORG)
+                self.pc = self.expression()
+                continue
+            if token.token_type == LET:
+                self.skip(LET)
+                label = self.current_token
+                self.skip(LABEL)
+                self.skip(ASSIGN)
+                arg = self.expression()
+                self.set_label(label.value, arg)
+                continue
+            self.skip(OPCODE)
+            if self.current_token.token_type in (COLON, NEWLINE, EOF): #akku/implied
+                self.asm_command(token, IMPLIED, None)
                 continue
 
-            if opcode not in opcodes:
-                raise Exception(f"Unkonwn opcode '{opcode}'")
+            if self.current_token.token_type == HASH: # token is immediate
+                self.skip(HASH)
+                arg = self.expression()
+                if arg > 255:
+                    raise Exception("Illegal quantity (#)")
+                self.asm_command(token, IMMEDIATE, arg)
+                continue
 
-            arg_type, parsed_arg = self.test_arg(arg)
-            rel_dist = 0
-            if arg_type == ABSOLUTE:
-                if parsed_arg <= 255 and ZP in opcodes[opcode]:
-                    arg_type = ZP
-                elif RELATIVE in opcodes[opcode]:
-                    arg_type = RELATIVE
-                    if parsed_arg < pc:
-                        rel_dist = 254 - (pc - parsed_arg)
-                    else:
-                        rel_dist = parsed_arg - pc
-                    if run == 2 and rel_dist > 255 or rel_dist < 0:
-                        raise Exception(f"Branch error")
-            if not arg_type in opcodes[opcode]:
-                raise Exception(f"Unkonwn addressing mode")
-  
-            if run == 2:
-                self.poke(pc, opcodes[opcode][arg_type])
-                if verbose:
-                    self.dis(line_number, pc, opcode, arg_type, parsed_arg, rel_dist, self.source_line)
-                
-                #if arg_type == IMPLIED:
-                #    pass
-                if arg_type == RELATIVE:
-                    self.poke(pc + 1, rel_dist)
-                elif arg_type < ABSOLUTE:
-                    self.poke(pc + 1, parsed_arg)
+            if self.current_token.token_type == LPAREN: # ()
+                self.skip(LPAREN)
+                arg = self.expression()
+                if self.current_token.token_type == COMMAX: # ,x)
+                    self.skip(COMMAX)
+                    self.skip(RPAREN)
+                    if arg > 255:
+                        raise Exception("Illegal quantity (must be 0..255)")
+                    self.asm_command(token, USELESS, arg)
+                elif self.current_token.token_type == RPAREN: # )
+                    self.skip(RPAREN)
+                    if self.current_token.token_type == COMMAY: # ),y
+                        self.skip(COMMAY)
+                        if arg > 255:
+                            raise Exception("Illegal quantity (must be 0..255)")
+                        self.asm_command(token, INDIRECTY, arg)
+                    else: # indirect )
+                        self.asm_command(token, INDIRECT, arg)
+                continue
+            #abs/zp (,x,y)
+            arg = self.expression()
+
+            # zp,x/abs,x
+            if self.current_token.token_type == COMMAX:
+                self.skip(COMMAX)
+                if arg <= 255:
+                    self.asm_command(token, ZPX, arg)
                 else:
-                    self.poke(pc + 1, parsed_arg % 256)
-                    self.poke(pc + 2, parsed_arg // 256)
-
-            if arg_type == IMPLIED:
-                pc = pc + 1
-            elif arg_type < ABSOLUTE:
-                pc = pc + 2
+                    self.asm_command(token, ABSOLUTEX, arg)
+                continue
+            # zp,y/abs,y
+            if self.current_token.token_type == COMMAY:
+                self.skip(COMMAY)
+                if arg <= 255:
+                    self.asm_command(token, ZPY, arg)
+                else:
+                    self.asm_command(token, ABSOLUTEY, arg)
+                continue
+            # zp/abs
+            if arg <= 255:
+                self.asm_command(token, ZP, arg)
+            elif RELATIVE in OPCODES[token.value]:
+                self.asm_command(token, RELATIVE, arg)
             else:
-                pc = pc + 3
-        if run == 1:
-            for label in self.labels:
-                if self.labels[label]["value"] == 65535:
-                    raise Exception(f"Unknwon label '{label}'")
-        if not org:
-            raise Exception("No base address")
+                self.asm_command(token, ABSOLUTE, arg)
+    def asm_command(self, token, mode, arg):
+        if mode not in OPCODES[token.value.lower()]:
+            raise Exception("Unknown addressing mode")
+        if arg is not None:
+            arg_low = arg % 256
+            arg_high = arg // 256
+            arg_relative = 0
+            if arg < self.pc:
+                arg_relative = 254 - (self.pc - arg)
+            else:
+                arg_relative = arg - self.pc
+        if self.run == 2:
+            if mode == IMMEDIATE:
+                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg:02x}    {token.value} #${arg:02x}")
+            elif mode == ZP:
+                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg:02x}    {token.value} ${arg:02x}")
+            elif mode == ZPX:
+                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg:02x}    {token.value} ${arg:02x},x")
+            elif mode == ZPY:
+                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg:02x}    {token.value} ${arg:02x},y")
+            elif mode == USELESS:
+                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg:02x}    {token.value} (${arg:02x},x)")
+            elif mode == INDIRECTY:
+                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg:02x}    {token.value} (${arg:02x}),y")
+                
+            elif mode == ABSOLUTE:
+                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg_low:02x} {arg_high:02x} {token.value} ${arg:04x}")
+            elif mode == ABSOLUTEX:
+                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg_low:02x} {arg_high:02x} {token.value} ${arg:04x},x")
+            elif mode == ABSOLUTEY:
+                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg_low:02x} {arg_high:02x} {token.value} ${arg:04x},y")
+            elif mode == INDIRECT:
+                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg_low:02x} {arg_high:02x} {token.value} (${arg:04x})")
+            elif mode == RELATIVE:
+                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg_relative:02x}    {token.value} ${arg:04x}")
+            elif mode == IMPLIED:
+                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x}       {token.value}")
+        self.pc += 1
+        if mode > IMPLIED:
+            self.pc += 1
+        if mode >= ABSOLUTE:
+            self.pc += 1
 
-    def dis(self, index, pc, opcode, arg_type, parsed_arg, rel_dist, line):
-        if opcode == "byte":
-            print(f"{index:05d}:{pc:04x} ...     :{line}")
-            return
-        print(f"{index:05d}:{pc:04x} {opcodes[opcode][arg_type]:02x} ", end = "")
-        if arg_type == IMPLIED:
-            print(f"     :{line}")
-        elif arg_type > RELATIVE and arg_type < ABSOLUTE:
-            print(f"{parsed_arg:02x}   :{line}")
-        elif arg_type == RELATIVE:
-            print(f"{rel_dist:02x}   :{line} (Branch target: ${parsed_arg:04x})")
-        else:
-            print(f"{parsed_arg % 256:02x} {parsed_arg // 256:02x}:{line}")
+labels = {
+    # line = -1 -> defined here; ignored by ".show_labels()"
+    # Kernal addresses for all C= computers
+    "basout": { "value": 0xffd2, "line": -1 }, "plot": { "value": 0xfff0, "line": -1 },
+    "open": { "value": 0xffc0, "line": -1 }, "close": { "value": 0xffc3, "line": -1 }, "setlfs": { "value": 0xffba, "line": -1 }, "setnam": { "value": 0xffbd, "line": -1 },
+    "load": { "value": 0xffd5, "line": -1 }, "save": { "value": 0xffd8, "line": -1 },
+    # BASIC adr for C64
+    "strout": { "value": 0xab1e, "line": -1 }, "chkkom": { "value": 0xaefd, "line": -1 }, "frmevl":{ "value": 0xe257, "line": -1 },
+    "frmnum": { "value": 0xad8a, "line": -1 }, "getadr": { "value": 0xb7f7, "line": -1 }
+}
 
-    def show_labels(self):
-        for label in self.labels:
-            if self.labels[label]["line_number"] > -1:
-                print(f"{label:12s}: ${self.labels[label]['value']:04x} {self.labels[label]['refs']}")
-    def show_unused_labels(self):
-        for label in self.labels:
-            if self.labels[label]["line_number"] > -1 and len(self.labels[label]["refs"]) == 0:
-                print(f"{label:12s}: ${self.labels[label]['value']:04x}")
+# source = "org 49152:lda # %101 +5:sta 123:ldx#<test:ldy#>test:jsr test\norg $c00a+ 1:test ldx #0\nrts"
 
-    def poke(self, adr, byte):
-        "Writes a byte into 'memory' and updates self.min_memory and self.max_memory"
-        if adr < self.min_memory:
-            self.min_memory = adr
-        if adr > self.max_memory:
-            self.max_memory = adr
-        if byte > 255:
-            raise Exception("byte must be in 0..255")
-        self.memory[adr] = byte
+file = open("test.asm")
+source = file.read()
+file.close()
+lexer = Lexer(source)
+# print(lexer.get_tokens())
 
-    def write_binary(self, filename):
-        pass
-    def write_hexdump(self):
-        adr = self.min_memory
-        # print(f"{adr % 256:02x}{adr // 256:02x}",end="")
-        while adr < self.max_memory:
-            print(f"{adr:04x}:", end="")
-            for i in range(8):
-                if adr + i >= self.max_memory:
-                    continue
-                print(f"{self.memory[adr + i]:02x} ", end="")
-            adr += 8
-            print()
-    
-if __name__ == "__main__":
-    file = open("test.asm")
-    asm = Assembler(file.read())
-    file.close()
-    asm.assemble(False) # Print compiled program
-    asm.show_labels() # Print labels
-    print("\n\nUnused labels:")
-    asm.show_unused_labels()
-    # asm.write_hexdump()
+ex = Assembler(lexer, labels)
+
+ex.assemble()
