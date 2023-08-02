@@ -153,7 +153,10 @@ class Assembler:
                     self.pc += 1
                     if not self.current_token.test(COMMA):
                         if self.run == 2:
-                            print(f"{byte_line:05} {byte_pc:04x}-{self.pc - 1:04x}     byte ${byte_data[0]:02x}", end="")
+                            if byte_pc == self.pc - 1:
+                                print(f"{byte_line:05} {byte_pc:04x}          byte ${byte_data[0]:02x}", end="")
+                            else:
+                                print(f"{byte_line:05} {byte_pc:04x}-{self.pc - 1:04x}     byte ${byte_data[0]:02x}", end="")
                             for data in byte_data[1:]:
                                 print(f", ${data:02x}",end="")
                             print()
