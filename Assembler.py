@@ -41,19 +41,19 @@ class Assembler:
 
     def factor(self):
         # print("factor",self.current_token)
-        if self.current_token.test(LPAREN):
+        if self.current_token.test(LPAREN): #this could be a problem
             self.skip(LPAREN)
             result = self.expression()
             self.skip(RPAREN)
             return result
-        if self.current_token.test(NUMBER):
+        if self.current_token.test(NUMBER): #hex/dec/bin
             token = self.current_token
             self.skip(NUMBER)
             return token.value
-        if self.current_token.test(LT):
+        if self.current_token.test(LT): # <expr
             self.skip(LT)
             return self.expression() % 256
-        if self.current_token.test(GT):
+        if self.current_token.test(GT): # >expr
             self.skip(GT)
             return self.expression() // 256
         if self.current_token.test(LABEL):
@@ -75,7 +75,7 @@ class Assembler:
                 result /= self.factor()
         return result
 
-    def expression(self):
+    def pm_expr(self):
         result = self.term()
         while self.current_token.token_type in (PLUS, MINUS):
             if self.current_token.test(PLUS):
@@ -84,6 +84,24 @@ class Assembler:
             else:
                 self.skip(MINUS)
                 result -= self.term()
+        return result
+    def and_expr(self):
+        result = self.pm_expr()
+        while self.current_token.token_type == AND:
+            self.skip(AND)
+            result &= self.pm_expr()
+        return result
+    def eor_expr(self):
+        result = self.and_expr()
+        while self.current_token.token_type == EOR:
+            self.skip(EOR)
+            result ^= self.and_expr()
+        return result
+    def expression(self):
+        result = self.eor_expr()
+        while self.current_token.token_type == OR:
+            self.skip(OR)
+            result |= self.eor_expr()
         return result
 
     def set_label(self, label, arg):

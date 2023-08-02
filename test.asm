@@ -56,7 +56,7 @@ sta ($5f),y;testcomment
  bpl again;testcomment
  brk;testcomment
 ;testcomment
-z= $700
+z= $700 | 3
     ;byte 8,bla, 0, $ff,>irq,<Abcdef
     ;.by 169
     ;byt 255

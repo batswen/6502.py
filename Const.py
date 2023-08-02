@@ -1,12 +1,12 @@
 IMPLIED=0 # 1 Byte (implied and akku)
-RELATIVE=1; ZP=2; ZPX=3; ZPY=4; USELESS=5; INDIRECTY=6; IMMEDIATE=7 # 2 Byte 
+RELATIVE=1; ZP=2; ZPX=3; ZPY=4; USELESS=5; INDIRECTY=6; IMMEDIATE=7 # 2 Byte
 ABSOLUTE=10; ABSOLUTEX=11; ABSOLUTEY=12; INDIRECT=13 # 3 Byte
 
 EOF="EOF"
 LET="LET"
 NUMBER = "Number"
 PLUS ="Plus";MINUS="Minus";MUL="Mul";DIV="Div";LPAREN="LParen";RPAREN="RParen"
-LT="<";GT=">"
+LT="<";GT=">";AND="&";OR="|";EOR="^"
 HASH="#";COMMAX=",x";COMMAY=",y"
 COLON=":";NEWLINE="Newline"
 ASSIGN="Assign"

@@ -77,7 +77,17 @@ class Lexer:
         if self.current_char == "/":
             self.advance()
             return Token(self.line, DIV, DIV)
-        
+
+        if self.current_char == "&":
+            self.advance()
+            return Token(self.line, AND, AND)
+        if self.current_char == "|":
+            self.advance()
+            return Token(self.line, OR, OR)
+        if self.current_char == "^":
+            self.advance()
+            return Token(self.line, EOR, EOR)
+
         if self.current_char == ",":
             self.advance()
             if self.current_char.lower() == "x":
