@@ -90,12 +90,7 @@ class Lexer:
 
         if self.current_char == ",":
             self.advance()
-            if self.current_char.lower() == "x":
-                self.advance()
-                return Token(self.line, COMMAX, COMMAX)
-            if self.current_char.lower() == "y":
-                self.advance()
-                return Token(self.line, COMMAY, COMMAY)
+            return Token(self.line, COMMA, COMMA)
         if self.current_char == "#":
             self.advance()
             return Token(self.line, HASH, HASH)
@@ -124,14 +119,14 @@ class Lexer:
             return Token(self.line - 1, NEWLINE, NEWLINE)
         if self.current_char.isalpha() or self.current_char in ("_", "."):
             text = self.get_label_or_opcode()
-            if len(text) < 2:
-                text = "_" + text
             if text.lower() in OPCODES:
                 return Token(self.line, OPCODE, text.lower())
             if text.lower() in ("org", "base", ".ba"):
                 return Token(self.line, ORG, ORG)
             if text.lower() in ("let"):
                 return Token(self.line, LET, LET)
+            if text.lower() in ("byte", "byt", ".by"):
+                return Token(self.line, BYTE, BYTE)
             return Token(self.line, LABEL, text)
         raise Exception(f"Syntax ({self.current_char})")
     def get_tokens(self):
@@ -159,7 +154,7 @@ if __name__ == "__main__":
 
     lexer = Lexer("lda ($f + %101 * 3),y")
     tokens = lexer.get_tokens()
-    assert len(tokens) == 10
+    assert len(tokens) == 11
     assert tokens[0] == Token(1, OPCODE, "lda")
     assert tokens[1] == Token(1, LPAREN, LPAREN)
     assert tokens[2] == Token(1, NUMBER, 15)
@@ -168,8 +163,9 @@ if __name__ == "__main__":
     assert tokens[5] == Token(1, MUL, MUL)
     assert tokens[6] == Token(1, NUMBER, 3)
     assert tokens[7] == Token(1, RPAREN, RPAREN)
-    assert tokens[8] == Token(1, COMMAY, COMMAY)
-    assert tokens[9] == Token(1, EOF, EOF)
+    assert tokens[8] == Token(1, COMMA, COMMA)
+    assert tokens[9] == Token(1, LABEL, "y")
+    assert tokens[10] == Token(1, EOF, EOF)
 
     lexer = Lexer("65535 +2-10")
     tokens = lexer.get_tokens()
@@ -193,6 +189,16 @@ if __name__ == "__main__":
         Token(1, NEWLINE, NEWLINE), Token(2, NEWLINE, NEWLINE), Token(3, NEWLINE, NEWLINE),
         Token(4, LABEL, "a"), Token(4, ASSIGN, ASSIGN), Token(4, NUMBER, 8),
         Token(4, EOF, EOF)
+    ]
+
+    lexer = Lexer("byte 0, xx,y, label") # Every comment creates a NEWLINE
+    tokens = lexer.get_tokens()
+    assert len(tokens) == 9
+    assert tokens == [
+        Token(1, BYTE, BYTE), Token(1, NUMBER, 0), Token(1, COMMA, COMMA),
+        Token(1, LABEL, "xx"), Token(1, COMMA, COMMA), Token(1, LABEL, "y"),
+        Token(1, COMMA, COMMA), Token(1, LABEL, "label"),
+        Token(1, EOF, EOF)
     ]
 
     print("Lexer: Ok")

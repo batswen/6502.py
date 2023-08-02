@@ -7,10 +7,12 @@ LET="LET"
 NUMBER = "Number"
 PLUS ="Plus";MINUS="Minus";MUL="Mul";DIV="Div";LPAREN="LParen";RPAREN="RParen"
 LT="<";GT=">";AND="&";OR="|";EOR="^"
-HASH="#";COMMAX=",x";COMMAY=",y"
+HASH="#";
+COMMA=",";COMMAX=",x";COMMAY=",y"
 COLON=":";NEWLINE="Newline"
 ASSIGN="Assign"
 ORG="Org"
+BYTE="Byte"
 OPCODE="Opcode"
 LABEL="Label"
 

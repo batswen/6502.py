@@ -58,10 +58,11 @@ sta ($5f),y;testcomment
  brk;testcomment
 ;testcomment
 z= $700 | 3
-    ;byte 8,bla, 0, $ff,>irq,<Abcdef
+org $1000
+    byte 8,bla, 0, $ff,>irq,<Abcdef
     ;.by 169
     ;byt 255
     rts
-    org z
+    org z; ORG with label
 
 label nop:ldx#%11:brk

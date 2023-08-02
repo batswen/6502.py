@@ -138,6 +138,28 @@ class Assembler:
             if token.test(COLON):
                 self.skip(COLON)
                 continue
+            if token.test(BYTE):
+                byte_line = token.line
+                byte_pc = self.pc
+                byte_data = []
+                self.skip(BYTE)
+                while self.current_token.token_type in (LABEL, NUMBER, GT, LT):
+                    value = self.expression()
+                    if value > 256:
+                        raise Exception("Illegal quantity")
+                    if self.run == 2:
+                        self.poke(self.pc, value)
+                        byte_data.append(value)
+                    self.pc += 1
+                    if not self.current_token.test(COMMA):
+                        if self.run == 2:
+                            print(f"{byte_line:05} {byte_pc:04x}-{self.pc - 1:04x}     byte ${byte_data[0]:02x}", end="")
+                            for data in byte_data[1:]:
+                                print(f", ${data:02x}",end="")
+                            print()
+                        break
+                    self.skip(COMMA)
+                continue
             if token.test(LABEL):
                 self.skip(LABEL)
                 if self.current_token.test(ASSIGN):
@@ -176,16 +198,22 @@ class Assembler:
             if self.current_token.test(LPAREN): # ()
                 self.skip(LPAREN)
                 arg = self.expression()
-                if self.current_token.test(COMMAX): # ,x)
-                    self.skip(COMMAX)
+                if self.current_token.test(COMMA): # ,x)
+                    self.skip(COMMA)
+                    if self.current_token.value.lower() != "x":
+                        raise Exception("Syntax (X expected)")
+                    self.skip(LABEL)
                     self.skip(RPAREN)
                     if arg > 255:
                         raise Exception("Illegal quantity (must be 0..255)")
                     self.asm_command(token, USELESS, arg)
                 elif self.current_token.test(RPAREN): # )
                     self.skip(RPAREN)
-                    if self.current_token.test(COMMAY): # ),y
-                        self.skip(COMMAY)
+                    if self.current_token.test(COMMA): # ),y
+                        self.skip(COMMA)
+                        if self.current_token.value.lower() != "y":
+                            raise Exception("Syntax (Y expected)")
+                        self.skip(LABEL)
                         if arg > 255:
                             raise Exception("Illegal quantity (must be 0..255)")
                         self.asm_command(token, INDIRECTY, arg)
@@ -196,21 +224,26 @@ class Assembler:
             arg = self.expression()
 
             # zp,x/abs,x
-            if self.current_token.test(COMMAX):
-                self.skip(COMMAX)
-                if arg <= 255 and ZP in OPCODES[token.value]:
-                    self.asm_command(token, ZPX, arg)
-                else:
-                    self.asm_command(token, ABSOLUTEX, arg)
-                continue
-            # zp,y/abs,y
-            if self.current_token.test(COMMAY):
-                self.skip(COMMAY)
-                if arg <= 255 and ZP in OPCODES[token.value]:
-                    self.asm_command(token, ZPY, arg)
-                else:
-                    self.asm_command(token, ABSOLUTEY, arg)
-                continue
+            if self.current_token.test(COMMA):
+                self.skip(COMMA)
+                if self.current_token.value.lower() in ("x", "y"):
+                    if self.current_token.value.lower() == "x":
+                        self.skip(LABEL)
+                        if arg <= 255 and ZP in OPCODES[token.value]:
+                            self.asm_command(token, ZPX, arg)
+                        else:
+                            self.asm_command(token, ABSOLUTEX, arg)
+                        continue
+                    elif self.current_token.value.lower() == "y":
+                # zp,y/abs,y
+                        self.skip(LABEL)
+                        if arg <= 255 and ZP in OPCODES[token.value]:
+                            self.asm_command(token, ZPY, arg)
+                        else:
+                            self.asm_command(token, ABSOLUTEY, arg)
+                        continue
+                    else:
+                        raise Exception("Syntax (X or Y expected)")
             # zp/abs
             if arg <= 255 and ZP in OPCODES[token.value]:
                 self.asm_command(token, ZP, arg)

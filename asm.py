@@ -22,5 +22,5 @@ lexer = Lexer(source)
 
 ex = Assembler(lexer, labels)
 
-ex.assemble(False)
+ex.assemble(True)
 # ex.dump_labels()
