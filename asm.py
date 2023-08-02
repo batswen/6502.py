@@ -131,11 +131,20 @@ class Lexer:
         if self.current_char.isdigit() or self.current_char in ("$", "%"):
             if self.current_char == "$":
                 self.advance()
-                return Token(self.line, NUMBER, int(self.get_int(), 16))
+                dec = int(self.get_int(), 16)
+                if dec > 65535:
+                    raise Exception("Illegal quantity")
+                return Token(self.line, NUMBER, dec)
             if self.current_char == "%":
                 self.advance()
-                return Token(self.line, NUMBER, int(self.get_int(), 2))
-            return Token(self.line, NUMBER, int(self.get_int()))
+                dec = int(self.get_int(), 2)
+                if dec > 65535:
+                    raise Exception("Illegal quantity")
+                return Token(self.line, NUMBER, dec)
+            dec = int(self.get_int())
+            if dec > 65535:
+                raise Exception("Illegal quantity")
+            return Token(self.line, NUMBER, dec)
 
         if self.current_char == "+":
             self.advance()
