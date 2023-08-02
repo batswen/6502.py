@@ -169,4 +169,18 @@ if __name__ == "__main__":
     assert tokens[4] == Token(1, NUMBER, 10)
     assert tokens[5] == Token(1, EOF, EOF)
 
-    print("Ok")
+    lexer = Lexer("Test")
+    tokens = lexer.get_tokens()
+    assert len(tokens) == 2
+    assert tokens == [Token(1, LABEL, "Test"), Token(1, EOF, EOF)]
+
+    lexer = Lexer(";1  \n  ;2  \n;3\na = 8") # Every comment creates a NEWLINE
+    tokens = lexer.get_tokens()
+    assert len(tokens) == 7
+    assert tokens == [
+        Token(1, NEWLINE, NEWLINE), Token(2, NEWLINE, NEWLINE), Token(3, NEWLINE, NEWLINE),
+        Token(4, LABEL, "a"), Token(4, ASSIGN, ASSIGN), Token(4, NUMBER, 8),
+        Token(4, EOF, EOF)
+    ]
+
+    print("Lexer: Ok")
