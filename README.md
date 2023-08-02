@@ -3,8 +3,6 @@ An assembler for the 6502 cpu written in python
 
 Start: python asm.py
 
-word, text are missing
-
 ## opcodes
 Case insensitive
 
@@ -12,8 +10,10 @@ Case insensitive
 Case insensitive
 * org/base/.ba adr or label: set start address
 * label = number: define label
-* byte expr {, expr}
+* word expr{, expr}
+* byte expr{, expr}
 * fill amount, byte
+* text "string" - NOT IMPLEMENTED
 
 ## labels
 Case sensitive
