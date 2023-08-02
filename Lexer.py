@@ -124,6 +124,8 @@ class Lexer:
             return Token(self.line - 1, NEWLINE, NEWLINE)
         if self.current_char.isalpha() or self.current_char in ("_", "."):
             text = self.get_label_or_opcode()
+            if len(text) < 2:
+                text = "_" + text
             if text.lower() in OPCODES:
                 return Token(self.line, OPCODE, text.lower())
             if text.lower() in ("org", "base", ".ba"):
@@ -142,7 +144,7 @@ class Lexer:
                     break
             return result
         except Exception as e:
-            print(f"{e} in {self.line}")
+            print(f"Lexer: {e} in {self.line}")
 
 if __name__ == "__main__":
     lexer = Lexer("lda:lda\nlda")

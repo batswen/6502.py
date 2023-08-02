@@ -16,7 +16,7 @@ Case insensitive
 ## labels
 Case sensitive
 
-Must start with a letter or underscore or dot (a-z_.), then (a-z0-9_.)
+Must start with a letter or underscore or dot (a-z_.), then (a-z0-9_.). Minimum length is 2 characters.
 
 ## numbers
 Numbers must be in range 0..65535 or 0..255 depending on the command.
