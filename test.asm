@@ -1,8 +1,8 @@
-        let bla=2
+         bla=2
 ;test
-let Abcdef= 5
-let test      =         1234
-    let adresse =$fff0
+ Abcdef= 5
+ test      =         1234
+    adresse =$fff0
     org $c000
     SEi
     lda #<irq:STA $314
@@ -21,10 +21,10 @@ irq:jmp $ea31
     lda Abcdef,x
     lda (Abcdef),y
     nop:ldx Abcdef,y
-    let x=500
+x=500
 back
 unused_label
-let y=600
+y=600
     nop
     bne back
     beq next
@@ -55,11 +55,11 @@ sta ($5f),y;testcomment
  bpl again;testcomment
  brk;testcomment
 ;testcomment
-let z= 700
+z= $700
     ;byte 8,bla, 0, $ff,>irq,<Abcdef
     ;.by 169
     ;byt 255
     rts
-org $a600
+    org z
 
 label nop:ldx#%11:brk

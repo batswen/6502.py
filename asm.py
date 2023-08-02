@@ -300,7 +300,7 @@ class Assembler:
     def dump_labels(self):
         for label in self.labels:
             if self.labels[label]["line"] != -1:
-                print(f"{label:16}=${self.labels[label]['value']:04x}")
+                print(f"{label:16}=${self.labels[label]['value']:04x} ({self.labels[label]['value']})")
     def compile(self):
         while self.current_token.token_type != EOF:
             token = self.current_token
@@ -314,20 +314,24 @@ class Assembler:
                 continue
             if token.token_type == LABEL:
                 self.skip(LABEL)
-                self.set_label(token.value, self.pc)
+                if self.current_token.token_type == ASSIGN:
+                    self.skip(ASSIGN)
+                    self.set_label(token.value, self.expression())
+                else:
+                    self.set_label(token.value, self.pc)
                 continue
             if token.token_type == ORG:
                 self.skip(ORG)
                 self.pc = self.expression()
                 continue
-            if token.token_type == LET:
-                self.skip(LET)
-                label = self.current_token
-                self.skip(LABEL)
-                self.skip(ASSIGN)
-                arg = self.expression()
-                self.set_label(label.value, arg)
-                continue
+            # if token.token_type == LET:
+            #     self.skip(LET)
+            #     label = self.current_token
+            #     self.skip(LABEL)
+            #     self.skip(ASSIGN)
+            #     arg = self.expression()
+            #     self.set_label(label.value, arg)
+            #     continue
             self.skip(OPCODE)
             if self.current_token.token_type in (COLON, NEWLINE, EOF): #akku/implied
                 self.asm_command(token, IMPLIED, None)
@@ -447,7 +451,7 @@ file = open("test.asm")
 source = file.read()
 file.close()
 lexer = Lexer(source)
-print(lexer.get_tokens())
+# print(lexer.get_tokens())
 
 ex = Assembler(lexer, labels)
 
