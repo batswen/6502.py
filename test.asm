@@ -2,11 +2,12 @@
 ;test
  Abcdef= 5
  test      =         1234
+irqvec = $314
     adresse =$fff0
     org $c000
     SEi
-    lda #<irq:STA $314
-    lda #>irq : sta $315
+    lda #<irq:STA irqvec
+    lda #>irq : sta irqvec + 1
     lda #     147:    jsr basout
 clI
     rts

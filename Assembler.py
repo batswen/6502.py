@@ -11,8 +11,20 @@ class Assembler:
         self.current_token = self.lexer.next_token()
         self.line = self.current_token.line
         self.run = 1
+        self.memory = bytearray(65536)
+        self.min_memory = 65536
+        self.max_memory = -1
+        self.verbose = False
 
-    def assemble(self):
+    def poke(self, address, content):
+        if address < self.min_memory:
+            self.min_memory = address
+        if address > self.max_memory:
+            self.max_memory = address
+        self.memory[address] = content
+
+    def assemble(self, verbose):
+        self.verbose = verbose
         try:
             self.lexer.reset()
             self.pc = 0
@@ -29,6 +41,8 @@ class Assembler:
             print("Pass 2")
             self.run = 2
             self.compile() # pass 2: assemble
+
+            print(f"Code: ${self.min_memory:04x} - ${self.max_memory:04x}")
         except Exception as e:
             print(f"{e} in {self.line}")
 
@@ -211,31 +225,31 @@ class Assembler:
             arg_low = arg % 256
             arg_high = arg // 256
             arg_relative = 0
+            if mode == RELATIVE:
+                if arg <= self.pc:
+                    arg_low = 254 - (self.pc - arg)
+                else:
+                    arg_low = arg - self.pc - 2
 
-            if arg <= self.pc:
-                arg_relative = 254 - (self.pc - arg)
-            else:
-                arg_relative = arg - self.pc - 2
-
-        if self.run == 2:
+        if self.run == 2 and self.verbose:
             if mode == IMPLIED:
                 print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x}       {token.value}")
             # zero page
             elif mode == IMMEDIATE:
-                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg:02x}    {token.value} #${arg:02x}    ;{arg}")
+                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg_low:02x}    {token.value} #${arg:02x}    ;{arg}")
             elif mode == ZP:
-                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg:02x}    {token.value} ${arg:02x}     ;{arg}")
+                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg_low:02x}    {token.value} ${arg:02x}     ;{arg}")
             elif mode == ZPX:
-                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg:02x}    {token.value} ${arg:02x},x   ;{arg}")
+                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg_low:02x}    {token.value} ${arg:02x},x   ;{arg}")
             elif mode == ZPY:
-                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg:02x}    {token.value} ${arg:02x},y   ;{arg}")
+                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg_low:02x}    {token.value} ${arg:02x},y   ;{arg}")
             elif mode == USELESS:
-                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg:02x}    {token.value} (${arg:02x},x) ;{arg}")
+                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg_low:02x}    {token.value} (${arg:02x},x) ;{arg}")
             elif mode == INDIRECTY:
-                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg:02x}    {token.value} (${arg:02x}),y ;{arg}")
+                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg_low:02x}    {token.value} (${arg:02x}),y ;{arg}")
             # relative
             elif mode == RELATIVE:
-                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg_relative:02x}    {token.value} ${arg:04x}   ;{arg}")
+                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg_low:02x}    {token.value} ${arg:04x}   ;{arg}")
             # absolute
             elif mode == ABSOLUTE:
                 print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg_low:02x} {arg_high:02x} {token.value} ${arg:04x}   ;{arg}")
@@ -245,10 +259,16 @@ class Assembler:
                 print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg_low:02x} {arg_high:02x} {token.value} ${arg:04x},y ;{arg}")
             elif mode == INDIRECT:
                 print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg_low:02x} {arg_high:02x} {token.value} (${arg:04x}) ;{arg}")
+        if self.run == 2:
+            self.poke(self.pc, OPCODES[token.value][mode])
         self.pc += 1
         if mode > IMPLIED:
+            if self.run == 2:
+                self.poke(self.pc,arg_low)
             self.pc += 1
         if mode >= ABSOLUTE:
+            if self.run == 2:
+                self.poke(self.pc,arg_high)
             self.pc += 1
 
 if __name__ == "__main__":
