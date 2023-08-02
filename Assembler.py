@@ -3,13 +3,6 @@ from Const import *
 from Token import Token
 from Lexer import Lexer
 
-class Label:
-    def __init__(self, line, name, value, refs):
-        self.line = line
-        self.name = name
-        self.value = value
-        self.refs = refs
-
 class Assembler:
     def __init__(self, lexer, labels):
         self.lexer = lexer
