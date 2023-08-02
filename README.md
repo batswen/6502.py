@@ -13,9 +13,11 @@ Case insensitive
 
 ## labels
 Case sensitive
-Must start with a letter or underscore or dot (a-z_.)
+
+Must start with a letter or underscore or dot (a-z_.), then (a-z0-9_.)
 
 ## numbers
 Numbers must be in range 0..65535 or 0..255 depending on the command.
 Hex numbers must start with $, binary numbers with a %.
-+,-,*,/ for addition, subtraction, multiplication and division
+
+Use +,-,*,/ for addition, subtraction, multiplication and division
