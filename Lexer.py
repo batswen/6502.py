@@ -135,4 +135,38 @@ class Lexer:
             print(f"{e} in {self.line}")
 
 if __name__ == "__main__":
-    pass
+    lexer = Lexer("lda:lda\nlda")
+    tokens = lexer.get_tokens()
+    assert len(tokens) == 6
+    assert tokens[0] == Token(1, OPCODE, "lda")
+    assert tokens[1] == Token(1, COLON, COLON)
+    assert tokens[2] == Token(1, OPCODE, "lda")
+    assert tokens[3] == Token(1, NEWLINE, NEWLINE)
+    assert tokens[4] == Token(2, OPCODE, "lda")
+    assert tokens[5] == Token(2, EOF, EOF)
+
+    lexer = Lexer("lda ($f + %101 * 3),y")
+    tokens = lexer.get_tokens()
+    assert len(tokens) == 10
+    assert tokens[0] == Token(1, OPCODE, "lda")
+    assert tokens[1] == Token(1, LPAREN, LPAREN)
+    assert tokens[2] == Token(1, NUMBER, 15)
+    assert tokens[3] == Token(1, PLUS, PLUS)
+    assert tokens[4] == Token(1, NUMBER, 5)
+    assert tokens[5] == Token(1, MUL, MUL)
+    assert tokens[6] == Token(1, NUMBER, 3)
+    assert tokens[7] == Token(1, RPAREN, RPAREN)
+    assert tokens[8] == Token(1, COMMAY, COMMAY)
+    assert tokens[9] == Token(1, EOF, EOF)
+
+    lexer = Lexer("65535 +2-10")
+    tokens = lexer.get_tokens()
+    assert len(tokens) == 6
+    assert tokens[0] == Token(1, NUMBER, 65535)
+    assert tokens[1] == Token(1, PLUS, PLUS)
+    assert tokens[2] == Token(1, NUMBER, 2)
+    assert tokens[3] == Token(1, MINUS, MINUS)
+    assert tokens[4] == Token(1, NUMBER, 10)
+    assert tokens[5] == Token(1, EOF, EOF)
+
+    print("Ok")
