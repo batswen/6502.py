@@ -3,6 +3,13 @@ from Const import *
 from Token import Token
 from Lexer import Lexer
 
+class Label:
+    def __init__(self, line, name, value, refs):
+        self.line = line
+        self.name = name
+        self.value = value
+        self.refs = refs
+
 class Assembler:
     def __init__(self, lexer, labels):
         self.lexer = lexer
@@ -11,6 +18,7 @@ class Assembler:
         self.current_token = self.lexer.next_token()
         self.line = self.current_token.line
         self.run = 1
+
     def assemble(self):
         try:
             self.lexer.reset()
@@ -32,56 +40,59 @@ class Assembler:
             print(f"{e} in {self.line}")
 
     def skip(self, token_type):
-        if self.current_token.token_type == token_type:
+        if self.current_token.test(token_type):
             self.current_token = self.lexer.next_token()
             self.line = self.current_token.line
         else:
             raise Exception(f"Syntax (Expected: {token_type}, got: {self.current_token.token_type})")
+
     def factor(self):
         # print("factor",self.current_token)
-        if self.current_token.token_type == LPAREN:
+        if self.current_token.test(LPAREN):
             self.skip(LPAREN)
             result = self.expression()
             self.skip(RPAREN)
             return result
-        if self.current_token.token_type == NUMBER:
+        if self.current_token.test(NUMBER):
             token = self.current_token
             self.skip(NUMBER)
             return token.value
-        if self.current_token.token_type == LT:
+        if self.current_token.test(LT):
             self.skip(LT)
             return self.expression() % 256
-        if self.current_token.token_type == GT:
+        if self.current_token.test(GT):
             self.skip(GT)
             return self.expression() // 256
-        if self.current_token.token_type == LABEL:
+        if self.current_token.test(LABEL):
             token = self.current_token
             self.skip(LABEL)
             if token.value not in self.labels:
                 self.labels[token.value] = { "value": 0xffff, "line": self.line }
             return self.labels[token.value]["value"]
         return None
+
     def term(self):
         result = self.factor()
         while self.current_token.token_type in (MUL, DIV):
-            if self.current_token.token_type == MUL:
+            if self.current_token.test(MUL):
                 self.skip(MUL)
                 result *= self.factor()
             else:
                 self.skip(DIV)
                 result /= self.factor()
         return result
+
     def expression(self):
-        
         result = self.term()
         while self.current_token.token_type in (PLUS, MINUS):
-            if self.current_token.token_type == PLUS:
+            if self.current_token.test(PLUS):
                 self.skip(PLUS)
                 result += self.term()
             else:
                 self.skip(MINUS)
                 result -= self.term()
         return result
+
     def set_label(self, label, arg):
         if label not in self.labels:
             self.labels[label] = { "value": 0xffff, "line": self.line }
@@ -90,20 +101,21 @@ class Assembler:
         for label in self.labels:
             if self.labels[label]["line"] != -1:
                 print(f"{self.labels[label]['line']:05} {label:16}=${self.labels[label]['value']:04x} ({self.labels[label]['value']})")
+
     def compile(self):
         while self.current_token.token_type != EOF:
             token = self.current_token
             if token.line != self.line:
                 print(self.line,token)
-            if token.token_type == NEWLINE:
+            if token.test(NEWLINE):
                 self.skip(NEWLINE)
                 continue
-            if token.token_type == COLON:
+            if token.test(COLON):
                 self.skip(COLON)
                 continue
-            if token.token_type == LABEL:
+            if token.test(LABEL):
                 self.skip(LABEL)
-                if self.current_token.token_type == ASSIGN:
+                if self.current_token.test(ASSIGN):
                     self.skip(ASSIGN)
                     self.set_label(token.value, self.expression())
                 else:
@@ -111,11 +123,11 @@ class Assembler:
                     if self.run == 2: # fix forward refs
                         self.labels[token.value]["line"] = self.line
                 continue
-            if token.token_type == ORG:
+            if token.test(ORG):
                 self.skip(ORG)
                 self.pc = self.expression()
                 continue
-            # if token.token_type == LET:
+            # if token.test(LET:
             #     self.skip(LET)
             #     label = self.current_token
             #     self.skip(LABEL)
@@ -128,7 +140,7 @@ class Assembler:
                 self.asm_command(token, IMPLIED, None)
                 continue
 
-            if self.current_token.token_type == HASH: # token is immediate
+            if self.current_token.test(HASH): # token is immediate
                 self.skip(HASH)
                 arg = self.expression()
                 if arg > 255:
@@ -136,18 +148,18 @@ class Assembler:
                 self.asm_command(token, IMMEDIATE, arg)
                 continue
 
-            if self.current_token.token_type == LPAREN: # ()
+            if self.current_token.test(LPAREN): # ()
                 self.skip(LPAREN)
                 arg = self.expression()
-                if self.current_token.token_type == COMMAX: # ,x)
+                if self.current_token.test(COMMAX): # ,x)
                     self.skip(COMMAX)
                     self.skip(RPAREN)
                     if arg > 255:
                         raise Exception("Illegal quantity (must be 0..255)")
                     self.asm_command(token, USELESS, arg)
-                elif self.current_token.token_type == RPAREN: # )
+                elif self.current_token.test(RPAREN): # )
                     self.skip(RPAREN)
-                    if self.current_token.token_type == COMMAY: # ),y
+                    if self.current_token.test(COMMAY): # ),y
                         self.skip(COMMAY)
                         if arg > 255:
                             raise Exception("Illegal quantity (must be 0..255)")
@@ -159,7 +171,7 @@ class Assembler:
             arg = self.expression()
 
             # zp,x/abs,x
-            if self.current_token.token_type == COMMAX:
+            if self.current_token.test(COMMAX):
                 self.skip(COMMAX)
                 if arg <= 255 and ZP in OPCODES[token.value]:
                     self.asm_command(token, ZPX, arg)
@@ -167,7 +179,7 @@ class Assembler:
                     self.asm_command(token, ABSOLUTEX, arg)
                 continue
             # zp,y/abs,y
-            if self.current_token.token_type == COMMAY:
+            if self.current_token.test(COMMAY):
                 self.skip(COMMAY)
                 if arg <= 255 and ZP in OPCODES[token.value]:
                     self.asm_command(token, ZPY, arg)
@@ -190,37 +202,38 @@ class Assembler:
             arg_relative = 0
 
             if arg <= self.pc:
-                arg_relative = 254 - (self.pc - arg) 
+                arg_relative = 254 - (self.pc - arg)
             else:
                 arg_relative = arg - self.pc - 2
+
         if self.run == 2:
             if mode == IMPLIED:
                 print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x}       {token.value}")
             # zero page
             elif mode == IMMEDIATE:
-                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg:02x}    {token.value} #${arg:02x}")
+                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg:02x}    {token.value} #${arg:02x}    ;{arg}")
             elif mode == ZP:
-                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg:02x}    {token.value} ${arg:02x}")
+                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg:02x}    {token.value} ${arg:02x}     ;{arg}")
             elif mode == ZPX:
-                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg:02x}    {token.value} ${arg:02x},x")
+                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg:02x}    {token.value} ${arg:02x},x   ;{arg}")
             elif mode == ZPY:
-                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg:02x}    {token.value} ${arg:02x},y")
+                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg:02x}    {token.value} ${arg:02x},y   ;{arg}")
             elif mode == USELESS:
-                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg:02x}    {token.value} (${arg:02x},x)")
+                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg:02x}    {token.value} (${arg:02x},x) ;{arg}")
             elif mode == INDIRECTY:
-                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg:02x}    {token.value} (${arg:02x}),y")
+                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg:02x}    {token.value} (${arg:02x}),y ;{arg}")
             # relative
             elif mode == RELATIVE:
-                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg_relative:02x}    {token.value} ${arg:04x}")
+                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg_relative:02x}    {token.value} ${arg:04x}   ;{arg}")
             # absolute
             elif mode == ABSOLUTE:
-                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg_low:02x} {arg_high:02x} {token.value} ${arg:04x}")
+                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg_low:02x} {arg_high:02x} {token.value} ${arg:04x}   ;{arg}")
             elif mode == ABSOLUTEX:
-                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg_low:02x} {arg_high:02x} {token.value} ${arg:04x},x")
+                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg_low:02x} {arg_high:02x} {token.value} ${arg:04x},x ;{arg}")
             elif mode == ABSOLUTEY:
-                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg_low:02x} {arg_high:02x} {token.value} ${arg:04x},y")
+                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg_low:02x} {arg_high:02x} {token.value} ${arg:04x},y ;{arg}")
             elif mode == INDIRECT:
-                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg_low:02x} {arg_high:02x} {token.value} (${arg:04x})")
+                print(f"{self.line:05} {self.pc:04x} {OPCODES[token.value][mode]:02x} {arg_low:02x} {arg_high:02x} {token.value} (${arg:04x}) ;{arg}")
         self.pc += 1
         if mode > IMPLIED:
             self.pc += 1

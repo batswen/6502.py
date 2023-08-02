@@ -4,6 +4,9 @@ class Token:
         self.value = value
         self.line = line
 
+    def test(self, token_type):
+        return self.token_type == token_type
+
     def __eq__(self, other):
         return self.line == other.line and self.token_type == other.token_type and self.value == other.value
     def __str__(self):

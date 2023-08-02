@@ -24,11 +24,11 @@ irq:jmp $ea31
 x=500
 back
 unused_label
-y=600
+y=600:asl:ldx #%111*7:stx y
     nop
     bne back
     beq next
-    lda (100),y 
+    lda (100),y
     sta (2,x);useless
 next:
     lda test,x
