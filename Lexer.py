@@ -118,15 +118,17 @@ class Lexer:
             self.line += 1
             return Token(self.line - 1, NEWLINE, NEWLINE)
         if self.current_char.isalpha() or self.current_char in ("_", "."):
-            text = self.get_label_or_opcode()
-            if text.lower() in OPCODES:
+            text = self.get_label_or_opcode().lower()
+            if text in OPCODES:
                 return Token(self.line, OPCODE, text.lower())
-            if text.lower() in ("org", "base", ".ba"):
+            elif text in ("org", "base", ".ba"):
                 return Token(self.line, ORG, ORG)
-            if text.lower() in ("let"):
+            elif text in ("let"):
                 return Token(self.line, LET, LET)
-            if text.lower() in ("byte", "byt", ".by"):
+            elif text in ("byte", "byt", ".by"):
                 return Token(self.line, BYTE, BYTE)
+            elif text in ("fill"):
+                return Token(self.line, FILL, FILL)
             return Token(self.line, LABEL, text)
         raise Exception(f"Syntax ({self.current_char})")
     def get_tokens(self):
@@ -191,7 +193,7 @@ if __name__ == "__main__":
         Token(4, EOF, EOF)
     ]
 
-    lexer = Lexer("byte 0, xx,y, label") # Every comment creates a NEWLINE
+    lexer = Lexer("byte 0, xx,y, label")
     tokens = lexer.get_tokens()
     assert len(tokens) == 9
     assert tokens == [

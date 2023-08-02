@@ -138,6 +138,25 @@ class Assembler:
             if token.test(COLON):
                 self.skip(COLON)
                 continue
+            if token.test(FILL):
+                self.skip(FILL)
+                fill_amount = self.expression()
+                if fill_amount > 255:
+                    raise Exception("Illegal quantity")
+                self.skip(COMMA)
+                fill_byte = self.expression()
+                if fill_byte > 255:
+                    raise Exception("Illegal quantity")
+                fill_pc = self.pc
+                if self.run == 2:
+                    for i in range(fill_amount):
+                        self.poke(self.pc, fill_byte)
+                        self.pc += 1
+                    if fill_amount == 1:
+                        print(f"{token.line:05} {fill_pc:04x}          fill ${fill_amount:02x}, ${fill_byte:02x}")
+                    else:
+                        print(f"{token.line:05} {fill_pc:04x}-{fill_pc + fill_amount - 1:04x}     fill ${fill_amount:02x}, ${fill_byte:02x}")
+                continue
             if token.test(BYTE):
                 byte_line = token.line
                 byte_pc = self.pc
@@ -254,6 +273,7 @@ class Assembler:
                 self.asm_command(token, RELATIVE, arg)
             else:
                 self.asm_command(token, ABSOLUTE, arg)
+
     def asm_command(self, token, mode, arg):
         if mode not in OPCODES[token.value.lower()]:
             raise Exception("Unknown addressing mode")

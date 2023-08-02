@@ -63,6 +63,8 @@ lda #0
     sta bla
     byte 8,bla, 0, $ff,>irq,<Abcdef
     .by $0a,$b, $a + 2
+    fill 5, 0
+    fill 1, 255
 byt 255
     rts
     org z; ORG with label

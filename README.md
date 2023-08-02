@@ -13,6 +13,7 @@ Case insensitive
 * org/base/.ba adr or label: set start address
 * label = number: define label
 * byte expr {, expr}
+* fill amount, byte
 
 ## labels
 Case sensitive
