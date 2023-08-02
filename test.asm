@@ -59,9 +59,11 @@ sta ($5f),y;testcomment
 ;testcomment
 z= $700 | 3
 org $1000
+lda #0
+    sta bla
     byte 8,bla, 0, $ff,>irq,<Abcdef
-    ;.by 169
-    ;byt 255
+    .by $0a,$b, $a + 2
+byt 255
     rts
     org z; ORG with label
 
