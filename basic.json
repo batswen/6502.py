@@ -1,0 +1,13 @@
+{
+    "filename": "basic",
+    "start": "0xa000",
+    "first_two_bytes_are_start": false,
+    "byte_table": [
+        { "start": "0xa004", "end": "0xa00b" },
+        { "start": "0xa080", "end": "0xa389" }
+    ],
+    "word_table": [
+        { "start": "0xa000", "end": "0xa003" },
+        { "start": "0xa00c", "end": "0xa07f" }
+    ]
+}

@@ -141,7 +141,7 @@ class Lexer:
                 return Token(self.line, BYTE, BYTE)
             elif text.lower() == "fill":
                 return Token(self.line, FILL, FILL)
-            elif text.lower() == "word":
+            elif text.lower() in ("word", ".wo"):
                 return Token(self.line, WORD, WORD)
             elif text.lower() == "text":
                 return Token(self.line, TEXT, TEXT)
