@@ -1,7 +1,7 @@
-# asm6502.py
-An assembler for the 6502 cpu written in python
+# 6502.py
+An assembler and disassembler for the 6502 cpu written in python
 
-Start: python asm.py
+Start: python asm.py file.src
 
 ## comments
 Comments start with ;
