@@ -56,8 +56,10 @@ while index < len(source) and index < 1000:
         elif b in (8, 10, 13):
             c = [0,1,2,3,4,5,6,7, "Backspace",9,"Line feed (\\r)",0xb,0xc,"Carriage return (\\n)"][b]
             print(f'{address:04x} {b:02x}       .by ${b:02x}   ; "{c}"')
-        elif b >= 65 + 128 and b <= 90 + 128:
-            print(f'{address:04x} {b:02x}       .by ${b:02x}   ; "{chr(b - 128)}"')
+
+        #
+        elif b >= 65 + 128 and b <= 90 + 128 or b == 35 + 128: # "a"-"z", "#"
+            print(f'{address:04x} {b:02x}       .by ${b:02x}   ; "{chr(b)}" / "{chr(b - 128)}"')
         else:
             print(f'{address:04x} {b:02x}       .by ${b:02x}')
         index += 1

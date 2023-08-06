@@ -38,7 +38,7 @@ Use +,-,*,/ for addition, subtraction, multiplication and division; and, or, eor
 
 ## The Disassembler
 
-Look into basic.json
+Look into basic.json (unfinished)
 
 ### todo
 * mark ranges as code, byte, word, ...
