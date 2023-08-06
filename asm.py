@@ -1,3 +1,5 @@
+import sys
+
 from Assembler import Assembler
 from Lexer import Lexer
 
@@ -14,7 +16,11 @@ labels = {
 
 # source = "org 49152:lda # %101 +5:sta 123:ldx#<test:ldy#>test:jsr test\norg $c00a+ 1:test ldx #0\nrts"
 
-file = open("test.asm")
+filename = "test.asm"
+if len(sys.argv) == 2:
+    filename = sys.argv[1]
+
+file = open(filename)
 source = file.read()
 file.close()
 lexer = Lexer(source)

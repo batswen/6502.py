@@ -1,8 +1,8 @@
 from Const import *
 
-
-
 source = [0xa9, 0x00, 0x8d, 0x20, 0xd0, 0xb1, 0x64, 0x10, 0x02, 0x30, 0xfc, 0x60]
+
+source = [0x78, 0xa9, 0x12, 0x8d, 0x14, 0x03, 0xa9, 0xc0, 0x8d, 0x15, 0x03, 0xa9, 0x93, 0x20, 0xd2, 0xff, 0x58, 0x60, 0x4c, 0x31, 0xea]
 
 # source_file = open("basic.rom", "rb")
 # source = source_file.read()
@@ -47,7 +47,7 @@ while index < len(source) and index < 100:
     elif adr_mode == INDIRECTY:
         print(f"{start_adr + index:04x} {b:02x} {source[index + 1]:02x}    {monic} (${source[index + 1]:02x}),y")
     elif adr_mode == IMMEDIATE:
-        print(f"{start_adr + index:04x} {b:02x} {source[index + 1]:02x}    {monic} #${source[index + 1]:02x}")
+        print(f"{start_adr + index:04x} {b:02x} {source[index + 1]:02x}    {monic} #${source[index + 1]:02x}    ;{source[index + 1]}")
     elif adr_mode == ABSOLUTE:
         print(f"{start_adr + index:04x} {b:02x} {source[index + 1]:02x} {source[index + 2]:02x} {monic} ${source[index + 2]:02x}{source[index + 1]:02x}")
     elif adr_mode == ABSOLUTEX:
