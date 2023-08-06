@@ -61,6 +61,10 @@ class Assembler:
         else:
             raise Exception(f"Syntax (Expected: {token_type}, got: {self.current_token.token_type})")
 
+    def add_refs_to_label(self, label):
+        if "refs" in self.labels[label] and self.line not in self.labels[label]["refs"]:
+            self.labels[label]["refs"].append(self.line)
+
     def factor(self):
         # print("factor",self.current_token)
         if self.current_token.test(LPAREN): #this could be a problem
@@ -82,7 +86,8 @@ class Assembler:
             token = self.current_token
             self.skip(LABEL)
             if token.value not in self.labels:
-                self.labels[token.value] = { "value": 0xffff, "line": self.line }
+                self.labels[token.value] = { "value": 0xffff, "line": self.line, "refs": [] }
+            self.add_refs_to_label(token.value)
             return self.labels[token.value]["value"]
         return None
 
@@ -128,12 +133,14 @@ class Assembler:
 
     def set_label(self, label, arg):
         if label not in self.labels:
-            self.labels[label] = { "value": 0xffff, "line": self.line }
+            self.labels[label] = { "value": 0xffff, "line": self.line, "refs": [] }
+        self.add_refs_to_label(label)
         self.labels[label]["value"] = arg
+
     def dump_labels(self):
         for label in self.labels:
             if self.labels[label]["line"] != -1:
-                print(f"{self.labels[label]['line']:05} {label:16}=${self.labels[label]['value']:04x} ({self.labels[label]['value']})")
+                print(f"{self.labels[label]['line']:05} {label:16}=${self.labels[label]['value']:04x} ({self.labels[label]['value']:5}) {self.labels[label]['refs']}")
 
     def compile(self):
         while self.current_token.token_type != EOF:
@@ -160,10 +167,11 @@ class Assembler:
                     for i in range(fill_amount):
                         self.poke(self.pc, fill_byte)
                         self.pc += 1
-                    if fill_amount == 1:
-                        print(f"{token.line:05} {fill_pc:04x}          fill ${fill_amount:02x}, ${fill_byte:02x}")
-                    else:
-                        print(f"{token.line:05} {fill_pc:04x}-{fill_pc + fill_amount - 1:04x}     fill ${fill_amount:02x}, ${fill_byte:02x}")
+                    if self.verbose:
+                        if fill_amount == 1:
+                            print(f"{token.line:05} {fill_pc:04x}          fill ${fill_amount:02x}, ${fill_byte:02x}")
+                        else:
+                            print(f"{token.line:05} {fill_pc:04x}-{fill_pc + fill_amount - 1:04x}     fill ${fill_amount:02x}, ${fill_byte:02x}")
                 continue
             if token.test(BYTE):
                 byte_line = token.line
@@ -179,7 +187,7 @@ class Assembler:
                         byte_data.append(value)
                     self.pc += 1
                     if not self.current_token.test(COMMA):
-                        if self.run == 2:
+                        if self.run == 2 and self.verbose:
                             if byte_pc == self.pc - 1:
                                 print(f"{byte_line:05} {byte_pc:04x}          byte ${byte_data[0]:02x}", end="")
                             else:
@@ -202,7 +210,7 @@ class Assembler:
                         word_data.append(value)
                     self.pc += 2
                     if not self.current_token.test(COMMA):
-                        if self.run == 2:
+                        if self.run == 2 and self.verbose:
                             print(f"{word_line:05} {word_pc:04x}-{self.pc - 1:04x}     word ${word_data[0]:04x}", end="")
                             for data in word_data[1:]:
                                 print(f", ${data:04x}",end="")
@@ -224,6 +232,7 @@ class Assembler:
                     self.set_label(token.value, self.pc)
                     if self.run == 2: # fix forward refs
                         self.labels[token.value]["line"] = self.line
+                self.add_refs_to_label(token.value)
                 continue
             if token.test(ORG):
                 self.skip(ORG)
@@ -314,10 +323,9 @@ class Assembler:
             arg_low = arg % 256
             arg_high = arg // 256
             if mode == RELATIVE:
+                arg_low = arg - self.pc - 2
                 if arg <= self.pc:
                     arg_low = 254 - (self.pc - arg)
-                else:
-                    arg_low = arg - self.pc - 2
 
         if self.run == 2 and self.verbose:
             if mode == IMPLIED:
