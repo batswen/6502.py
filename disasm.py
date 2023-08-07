@@ -16,11 +16,16 @@ def is_byte(adr):
             return True
     return False
 
-# source = [0xa9, 0x00, 0x8d, 0x20, 0xd0, 0xb1, 0x64, 0x10, 0x02, 0x30, 0xfc, 0x60]
+dis_opcodes = [None for x in range(256)]
 
-# source = [0x78, 0xa9, 0x12, 0x8d, 0x14, 0x03, 0xa9, 0xc0, 0x8d, 0x15, 0x03, 0xa9, 0x93, 0x20, 0xd2, 0xff, 0x58, 0x60, 0x4c, 0x31, 0xea]
+for op in OPCODES.keys():
+    keys = OPCODES[op].keys()
+    for key in keys:
+        dis_opcodes[OPCODES[op][key]] = { "monic": op, "addressing_mode": key }
 
-json_file = open("basic.json")
+# source = [0x00,0xc0, 0x78, 0xa9, 0x12, 0x8d, 0x14, 0x03, 0xa9, 0xc0, 0x8d, 0x15, 0x03, 0xa9, 0x93, 0x20, 0xd2, 0xff, 0x58, 0x60, 0x4c, 0x31, 0xea]
+
+json_file = open("a.out.json")
 json_data = json_file.read()
 json_file.close()
 
@@ -33,17 +38,10 @@ source_file.close()
 byte_table = data["byte_table"]
 word_table = data["word_table"]
 
-dis_opcodes = [None for x in range(256)]
-
-for op in OPCODES.keys():
-    keys = OPCODES[op].keys()
-    for key in keys:
-        dis_opcodes[OPCODES[op][key]] = { "monic": op, "addressing_mode": key }
-
 start_adr = int(data["start"], 16)
 index = 0
 if data["first_two_bytes_are_start"]: #untested
-    start_adr -= 2
+    start_adr = source[0] + 256 * source[1]
     index = 2
 
 labels = set()
@@ -119,12 +117,8 @@ while index < len(source) and index < 10000:
     if adr_mode >= ABSOLUTE:
         index += 1
 
-print("# labels",len(labels))
 # print(labels)
-print("Lb91d" in labels)
 for line in disasmd_lines:
-    if "b91d" in line:
-        print(line)
     dl_label = line.split(" ")[0]
     dl_rest = line.split(" ", 1)[1]
 

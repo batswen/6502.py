@@ -16,6 +16,13 @@ class Assembler:
         self.max_memory = -1
         self.verbose = False
 
+    def get_memory(self):
+        return {
+            "start": self.min_memory,
+            "end": self.max_memory,
+            "memory": self.memory
+        }
+
     def poke(self, address, content):
         if address < self.min_memory:
             self.min_memory = address
@@ -33,26 +40,27 @@ class Assembler:
 
     def assemble(self, verbose):
         self.verbose = verbose
-        try:
-            self.lexer.reset()
-            self.pc = 0
-            self.current_token = self.lexer.next_token()
-            self.line = self.current_token.line
-            print("Pass 1")
-            self.run = 1
-            self.compile() # pass 1: define labels
+        # try:
+        self.lexer.reset()
+        self.pc = 0
+        self.current_token = self.lexer.next_token()
+        self.line = self.current_token.line
+        print("Pass 1")
+        self.run = 1
+        self.compile() # pass 1: define labels
 
-            self.lexer.reset()
-            self.pc = 0
-            self.current_token = self.lexer.next_token()
-            self.line = self.current_token.line
-            print("Pass 2")
-            self.run = 2
-            self.compile() # pass 2: assemble
+        self.lexer.reset()
+        self.pc = 0
+        self.current_token = self.lexer.next_token()
+        self.line = self.current_token.line
+        print("Pass 2")
+        self.run = 2
+        self.compile() # pass 2: assemble
 
-            print(f"Code: ${self.min_memory:04x} - ${self.max_memory:04x}")
-        except Exception as e:
-            print(f"{e} in {self.line}")
+        print(f"Code: ${self.min_memory:04x} - ${self.max_memory:04x}")
+
+        # except Exception as e:
+        # print(f"{e} in {self.line}")
 
     def skip(self, token_type):
         if self.current_token.test(token_type):
@@ -88,6 +96,9 @@ class Assembler:
             if token.value not in self.labels:
                 self.labels[token.value] = { "value": 0xffff, "line": self.line, "refs": [] }
             self.add_refs_to_label(token.value)
+            if self.run == 2 and self.labels[token.value]["value"] == 0xffff:
+                raise Exception(f'Label "{token.value}" is not defined')
+                pass
             return self.labels[token.value]["value"]
         return None
 

@@ -14,13 +14,19 @@ labels = {
     "frmnum": { "value": 0xad8a, "line": -1 }, "getadr": { "value": 0xb7f7, "line": -1 }
 }
 
-# source = "org 49152:lda # %101 +5:sta 123:ldx#<test:ldy#>test:jsr test\norg $c00a+ 1:test ldx #0\nrts"
+outfile = "a.out"
 
-filename = "test.asm"
-if len(sys.argv) == 2:
-    filename = sys.argv[1]
+# python asm.py infile.asm [outfile.bin]
 
-file = open(filename)
+if len(sys.argv) > 1:
+    infile = sys.argv[1]
+    if len(sys.argv) > 2:
+        outfile = sys.argv[2]
+else:
+    print("Usage: asm.py infile.asm [outfile]")
+    sys.exit(1)
+
+file = open(infile)
 source = file.read()
 file.close()
 lexer = Lexer(source)
@@ -28,5 +34,13 @@ lexer = Lexer(source)
 
 ex = Assembler(lexer, labels)
 
-ex.assemble(True)
+ex.assemble(False)
+mem = ex.get_memory()
+
+file = open(outfile, "wb")
+
+file.write(bytes([mem["start"] % 256, mem["start"] // 256]))
+file.write(bytes(mem["memory"][mem["start"]:mem["end"]+1]))
 # ex.dump_labels()
+
+file.close()

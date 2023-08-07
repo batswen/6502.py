@@ -1,17 +1,29 @@
 # 6502.py
 An assembler and disassembler for the 6502 cpu written in python
 
-## The Assembler
+## Assembler
 
-Start: python asm.py file.src
+Start: python asm.py file.src [outfile = "a.out"]
 
-### comments
+## Disassembler
+
+start: python disasm.py [filename = "a.out.json"]
+
+Look into *.json (unfinished)
+
+## Hexdump
+
+start: python hexdump.py [filename = "a.out"]
+
+## Assembler
+
+### Comments
 Comments start with ;
 
-### opcodes
+### Opcodes
 Case insensitive
 
-### pseudo opcodes
+### Pseudo opcodes
 Case insensitive, except for strings
 
 * org/base/.ba adr or label: set start address
@@ -21,12 +33,12 @@ Case insensitive, except for strings
 * fill amount, byte
 * text "string" - NOT IMPLEMENTED
 
-### labels
+### Labels
 Case sensitive
 
 Must start with a letter or underscore or dot (a-z_.), then (a-z0-9_.). Minimum length is 2 characters.
 
-### numbers
+### Numbers
 Numbers must be in range 0..65535 or 0..255 depending on the command.
 Hex numbers must start with $, binary numbers with a %.
 
@@ -36,6 +48,3 @@ Use +,-,*,/ for addition, subtraction, multiplication and division; and, or, eor
 * Float (FLPT and MFLPT)
 * Unicode to PETSCII conversion
 
-## The Disassembler
-
-Look into basic.json (unfinished)

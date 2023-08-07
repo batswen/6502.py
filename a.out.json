@@ -1,0 +1,7 @@
+{
+    "filename": "a.out",
+    "start": "0x8000",
+    "first_two_bytes_are_start": true,
+    "byte_table": [],
+    "word_table": []
+}
