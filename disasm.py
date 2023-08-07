@@ -33,7 +33,7 @@ source_file.close()
 byte_table = data["byte_table"]
 word_table = data["word_table"]
 
-dis_opcodes = [None for x in range(255)]
+dis_opcodes = [None for x in range(256)]
 
 for op in OPCODES.keys():
     keys = OPCODES[op].keys()
@@ -46,70 +46,89 @@ if data["first_two_bytes_are_start"]: #untested
     start_adr -= 2
     index = 2
 
-while index < len(source) and index < 1000:
+labels = set()
+disasmd_lines = []
+
+while index < len(source) and index < 10000:
     address = start_adr + index
     b = source[index]
 
     if is_byte(address):
         if b >= 32 and b <= 122:
-            print(f'{address:04x} {b:02x}       .by ${b:02x}   ; "{chr(b)}"')
+            disasmd_lines.append(f'L{address:04x} .by ${b:02x}   ; "{chr(b)}"')
+            # print(f'L{address:04x} .by ${b:02x}   ; "{chr(b)}"')
         elif b in (8, 10, 13):
             c = [0,1,2,3,4,5,6,7, "Backspace",9,"Line feed (\\r)",0xb,0xc,"Carriage return (\\n)"][b]
-            print(f'{address:04x} {b:02x}       .by ${b:02x}   ; "{c}"')
+            disasmd_lines.append(f'L{address:04x} .by ${b:02x}   ; "{c}"')
 
         #
         elif b >= 65 + 128 and b <= 90 + 128 or b == 35 + 128: # "a"-"z", "#"
-            print(f'{address:04x} {b:02x}       .by ${b:02x}   ; "{chr(b)}" / "{chr(b - 128)}"')
+            disasmd_lines.append(f'L{address:04x} .by ${b:02x}   ; "{chr(b)}" / "{chr(b - 128)}"')
         else:
-            print(f'{address:04x} {b:02x}       .by ${b:02x}')
+            disasmd_lines.append(f'L{address:04x} .by ${b:02x}')
         index += 1
         continue
 
     if is_word(address):
-        print(f'{address:04x} {b:02x} {source[index + 1]:02x}    .wo ${source[index + 1]:02x}{b:02x}')
+        disasmd_lines.append(f'L{address:04x} .wo ${source[index + 1]:02x}{b:02x}')
         index += 2
         continue
 
     if dis_opcodes[b] == None:
-        print(f"{address:04x} {b:02x}       ???")
+        disasmd_lines.append(f"L{address:04x} ???")
         index += 1
         continue
 
     adr_mode = dis_opcodes[b]["addressing_mode"]
     monic = dis_opcodes[b]["monic"]
-    # if adr in byte, word, text ...
 
-    if adr_mode == IMPLIED:
-        print(f"{address:04x} {b:02x}       {monic}")
-    elif adr_mode == RELATIVE: # !!!
+    # record labels
+    if adr_mode >= ZP and adr_mode <= IMMEDIATE:
+        dest_address = f"L{source[index + 1]:02x}"
+        labels.add(dest_address)
+    if adr_mode >= ABSOLUTE:
+        dest_address = f"L{source[index + 1] + 256 * source[index + 2]:04x}"
+        labels.add(dest_address)
+    if adr_mode == RELATIVE:
         distance = source[index + 1]
         b_adress = address + distance + 2
         if distance > 127:
             b_adress = address + distance - 254
+        dest_address = f"L{b_adress:04x}"
+        labels.add(dest_address)
 
-        print(f"{address:04x} {b:02x} {source[index + 1]:02x}    {monic} ${b_adress:02x}")
-    elif adr_mode == ZP:
-        print(f"{address:04x} {b:02x} {source[index + 1]:02x}    {monic} ${source[index + 1]:02x}")
-    elif adr_mode == ZPX:
-        print(f"{address:04x} {b:02x} {source[index + 1]:02x}    {monic} ${source[index + 1]:02x},x")
-    elif adr_mode == ZPY:
-        print(f"{address:04x} {b:02x} {source[index + 1]:02x}    {monic} ${source[index + 1]:02x},y")
+    if adr_mode == IMPLIED:
+        disasmd_lines.append(f"L{address:04x} {monic}")
+    elif adr_mode in (ZP,RELATIVE, ABSOLUTE):
+        disasmd_lines.append(f"L{address:04x} {monic} {dest_address}")
+    elif adr_mode in (ZPX, ABSOLUTEX):
+        disasmd_lines.append(f"L{address:04x} {monic} {dest_address},x")
+    elif adr_mode in (ZPY, ABSOLUTEY):
+        disasmd_lines.append(f"L{address:04x} {monic} {dest_address},y")
     elif adr_mode == USELESS:
-        print(f"{address:04x} {b:02x} {source[index + 1]:02x}    {monic} (${source[index + 1]:02x},x)")
+        disasmd_lines.append(f"L{address:04x} {monic} ({dest_address},x)")
     elif adr_mode == INDIRECTY:
-        print(f"{address:04x} {b:02x} {source[index + 1]:02x}    {monic} (${source[index + 1]:02x}),y")
+        disasmd_lines.append(f"L{address:04x} {monic} ({dest_address}),y")
     elif adr_mode == IMMEDIATE:
-        print(f"{address:04x} {b:02x} {source[index + 1]:02x}    {monic} #${source[index + 1]:02x}    ;{source[index + 1]}")
-    elif adr_mode == ABSOLUTE:
-        print(f"{address:04x} {b:02x} {source[index + 1]:02x} {source[index + 2]:02x} {monic} ${source[index + 2]:02x}{source[index + 1]:02x}")
-    elif adr_mode == ABSOLUTEX:
-        print(f"{address:04x} {b:02x} {source[index + 1]:02x} {source[index + 2]:02x} {monic} ${source[index + 2]:02x}{source[index + 1]:02x},x")
-    elif adr_mode == ABSOLUTEY:
-        print(f"{address:04x} {b:02x} {source[index + 1]:02x} {source[index + 2]:02x} {monic} ${source[index + 2]:02x}{source[index + 1]:02x},y")
+        disasmd_lines.append(f"L{address:04x} {monic} #${source[index + 1]:02x}    ;{source[index + 1]}")
     elif adr_mode == INDIRECT:
-        print(f"{address:04x} {b:02x} {source[index + 1]:02x} {source[index + 2]:02x} {monic} (${source[index + 2]:02x}{source[index + 1]:02x})")
+        disasmd_lines.append(f"L{address:04x} {monic} ({dest_address})")
     index += 1
     if adr_mode >= RELATIVE:
         index += 1
     if adr_mode >= ABSOLUTE:
         index += 1
+
+print("# labels",len(labels))
+# print(labels)
+print("Lb91d" in labels)
+for line in disasmd_lines:
+    if "b91d" in line:
+        print(line)
+    dl_label = line.split(" ")[0]
+    dl_rest = line.split(" ", 1)[1]
+
+    if dl_label in labels:
+        print(line)
+    else:
+        print(f"      {dl_rest}")
