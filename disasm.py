@@ -1,5 +1,6 @@
 from Const import *
 import json
+import sys
 
 def between(num, start, end):
     return num >= start and num <= end
@@ -25,24 +26,42 @@ for op in OPCODES.keys():
 
 # source = [0x00,0xc0, 0x78, 0xa9, 0x12, 0x8d, 0x14, 0x03, 0xa9, 0xc0, 0x8d, 0x15, 0x03, 0xa9, 0x93, 0x20, 0xd2, 0xff, 0x58, 0x60, 0x4c, 0x31, 0xea]
 
-json_file = open("a.out.json")
-json_data = json_file.read()
-json_file.close()
+filename_json = None
+# filename_bin = "a.out"
 
-data = json.loads(json_data)
+if len(sys.argv) > 1:
+    if sys.argv[1].endswith(".json"):
+        filename_json = sys.argv[1]
+    else:
+        filename_bin = sys.argv[1]
+else:
+    print(f"Usage: [sys.argv[0]] infile | infile.json")
+    sys.exit(1)
 
-source_file = open(data["filename"], "rb")
+byte_table = []
+word_table = []
+
+data = None
+index = 0
+
+if filename_json:
+    json_file = open(filename_json)
+    json_data = json_file.read()
+    json_file.close()
+
+    data = json.loads(json_data)
+
+    filename_bin = data["filename"]
+    byte_table = data["byte_table"]
+    word_table = data["word_table"]
+
+source_file = open(filename_bin, "rb")
 source = source_file.read()
 source_file.close()
 
-byte_table = data["byte_table"]
-word_table = data["word_table"]
-
-start_adr = int(data["start"], 16)
-index = 0
-if data["first_two_bytes_are_start"]: #untested
-    start_adr = source[0] + 256 * source[1]
-    index = 2
+# assume start address is included (C= like)
+start_adr = source[0] + 256 * source[1]
+source = source[2:]
 
 labels = set()
 disasmd_lines = []
@@ -81,7 +100,7 @@ while index < len(source) and index < 10000:
     monic = dis_opcodes[b]["monic"]
 
     # record labels
-    if adr_mode >= ZP and adr_mode <= IMMEDIATE:
+    if adr_mode >= ZP and adr_mode < IMMEDIATE:
         dest_address = f"L{source[index + 1]:02x}"
         labels.add(dest_address)
     if adr_mode >= ABSOLUTE:
@@ -118,11 +137,32 @@ while index < len(source) and index < 10000:
         index += 1
 
 # print(labels)
+end_adr = start_adr+len(source)-1
+
+for line in disasmd_lines:
+    dl_label = line.split(" ")[0]
+    dl_rest = line.split(" ", 1)[1]
+
+    # if dl_label in labels:
+    #     print(line)
+    # else:
+    #     print(f"      {dl_rest}")
+
+outfile = open(filename_bin + "_out.txt", "wt")
+for label in labels:
+    l = int(label[1:], 16)
+    if l < start_adr or l > end_adr:
+        # print(f"{label} = ${l:04x}")
+        outfile.write(f"{label} = ${l:04x}\n")
+
 for line in disasmd_lines:
     dl_label = line.split(" ")[0]
     dl_rest = line.split(" ", 1)[1]
 
     if dl_label in labels:
-        print(line)
+        # print(line)
+        outfile.write(f"{line}\n")
     else:
-        print(f"      {dl_rest}")
+        # print(f"      {dl_rest}")
+        outfile.write(f"      {dl_rest}\n")
+outfile.close()

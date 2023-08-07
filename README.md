@@ -7,13 +7,15 @@ Start: python asm.py file.src [outfile = "a.out"]
 
 ## Disassembler
 
-start: python disasm.py [filename = "a.out.json"]
+Start: python disasm.py filename|filename.json
 
 Look into *.json (unfinished)
 
+Saves filename + "_out.txt"
+
 ## Hexdump
 
-start: python hexdump.py [filename = "a.out"]
+Start: python hexdump.py filename
 
 ## Assembler
 
@@ -47,4 +49,3 @@ Use +,-,*,/ for addition, subtraction, multiplication and division; and, or, eor
 ### Future plans
 * Float (FLPT and MFLPT)
 * Unicode to PETSCII conversion
-

@@ -1,0 +1,16 @@
+L0314 = $0314
+L0315 = $0315
+Lffd2 = $ffd2
+Lea31 = $ea31
+      sei
+      lda #$15    ;21
+      sta L0314
+      lda #$c0    ;192
+      sta L0315
+      lda #$93    ;147
+      jsr Lffd2
+      cli
+      bcc Lc014
+      inx
+Lc014 rts
+      jmp Lea31

@@ -4,7 +4,7 @@ irqvec = $314
     SEi
     lda #<irq:STA irqvec
     lda #>irq : sta irqvec + 1
-    ;lda #     a:    jsr basout
+    lda #     a:    jsr basout
 clI
     bcc ende
     inx

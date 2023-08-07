@@ -1,8 +1,11 @@
 import sys
 
-filename = "a.out"
+filename = ""
 if len(sys.argv) == 2:
     filename = sys.argv[1]
+else:
+    print(f"Usage: {sys.argv[0]} filename")
+    sys.exit(1)
 
 file = open(filename, "rb")
 source = file.read()

@@ -23,7 +23,7 @@ if len(sys.argv) > 1:
     if len(sys.argv) > 2:
         outfile = sys.argv[2]
 else:
-    print("Usage: asm.py infile.asm [outfile]")
+    print(f"Usage: {sys.argv[0]} infile.asm [outfile]")
     sys.exit(1)
 
 file = open(infile)
