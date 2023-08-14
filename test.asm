@@ -11,3 +11,6 @@ clI
     ende
     rts
 irq jmp $ea31
+    lda #255 & 7
+    ldx #32 | 7
+    ldy #255 ^ 7

@@ -1,7 +1,7 @@
-L0314 = $0314
 L0315 = $0315
-Lffd2 = $ffd2
 Lea31 = $ea31
+Lffd2 = $ffd2
+L0314 = $0314
       sei
       lda #$15    ;21
       sta L0314

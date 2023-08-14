@@ -9,6 +9,7 @@ Start: python asm.py file.src [outfile = "a.out"]
 
 Start: python disasm.py filename|filename.json
 
+The JSON file defines ranges of byte and word tables.\
 Look into *.json (unfinished)
 
 Saves filename + "_out.txt"

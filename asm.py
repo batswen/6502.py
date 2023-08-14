@@ -34,13 +34,13 @@ lexer = Lexer(source)
 
 ex = Assembler(lexer, labels)
 
-ex.assemble(False)
+ex.assemble(True) # Verbose
 mem = ex.get_memory()
+# ex.dump_labels()
 
 file = open(outfile, "wb")
 
 file.write(bytes([mem["start"] % 256, mem["start"] // 256]))
 file.write(bytes(mem["memory"][mem["start"]:mem["end"]+1]))
-# ex.dump_labels()
 
 file.close()
