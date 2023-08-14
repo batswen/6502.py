@@ -2,6 +2,27 @@ from Const import *
 import json
 import sys
 
+# a9 xx 8d xl xh a9 yy 8d yl yh
+# xl+256*xh == yl+256*yh + 1 and between(xx+256*yy, min_memory, max_memory)
+
+def find(source):
+    index = 0
+    for i in source:
+        if index + 9 < len(source):
+            if i == 0xa9 and source[index + 2] == 0x8d and source[index + 5] == 0xa9 and source[index + 7] == 0x8d:
+                ptr = source[index + 1] + 256 * source[index + 6]
+                target = source[index + 3] + 256 * source[index + 4]
+                target_plus_1 = source[index + 8] + 256 * source[index + 9]
+                if target +1 == target_plus_1 and ptr > start_adr and ptr < start_adr + len(source):
+                    print(f"L{target:04x} = ${target:04x}")
+                    print(f"      lda #<L{ptr:04x}")
+                    print(f"      sta L{target:04x}")
+                    print(f"      lda #>L{ptr:04x}")
+                    print(f"      sta L{target:04x} + 1")
+                    print(f"L{ptr:04x} ...")
+
+        index += 1
+
 def between(num, start, end):
     return num >= start and num <= end
 
@@ -59,9 +80,12 @@ source_file = open(filename_bin, "rb")
 source = source_file.read()
 source_file.close()
 
+
 # assume start address is included (C= like)
 start_adr = source[0] + 256 * source[1]
 source = source[2:]
+
+# find(source) # !!!!!!!!!!!!!
 
 labels = set()
 disasmd_lines = []
