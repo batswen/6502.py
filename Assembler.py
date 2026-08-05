@@ -178,10 +178,11 @@ class Assembler:
                 if fill_byte > 255:
                     self.error("Illegal quantity")
                 fill_pc = self.pc
-                if self.run == 2:#!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                    for i in range(fill_amount):
+                for i in range(fill_amount):
+                    if self.run == 2:
                         self.poke(self.pc, fill_byte)
-                        self.pc += 1
+                    self.pc += 1
+                if self.run == 2:#!!!!!!!!!!!!!!!!!!!!!!!!!!!
                     if self.verbose:
                         if fill_amount == 1:
                             print(f"{token.line:05} {fill_pc:04x}          fill ${fill_amount:02x}, ${fill_byte:02x}")
