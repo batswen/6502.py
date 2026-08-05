@@ -31,14 +31,19 @@ Case insensitive
 
 ### Pseudo opcodes
 Case insensitive, except for strings
+```
+ label = number        ; define label
 
-* org/base/.ba adr or label: set start address
-* label = number: define label
-* word expr{, expr}
-* byte expr{, expr}
-* fill amount, byte
-* text "string"
+ org/base/ba          ; set start address
+ .org/.base/.ba
 
+ word/.word/wo/.wo    ; store comma separated word(s)
+ byte/byt/by/.byte/.byt/.by
+                      ; store comma seaprated byte(s)
+ fill amount, byte    ; fills memory
+
+ text/txt/.text/.txt  ; store string
+```
 ### Labels
 Case sensitive
 
