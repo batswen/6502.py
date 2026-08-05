@@ -143,6 +143,7 @@ class Lexer:
                 return Token(self.line, WORD, WORD)
             elif text.lower() in ("text", "txt", ".text", ".txt"):
                 return Token(self.line, TEXT, TEXT)
+            return Token(self.line, LABEL, text)
         raise Exception(f"Syntax ({self.current_char})")
     def get_tokens(self):
         try:
