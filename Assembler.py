@@ -67,7 +67,10 @@ class Assembler:
             self.current_token = self.lexer.next_token()
             self.line = self.current_token.line
         else:
-            raise Exception(f"Syntax (Expected: {token_type}, got: {self.current_token.token_type})")
+            self.error(f"Syntax (Expected: {token_type}, got: {self.current_token.token_type})")
+
+    def error(self, message):
+        raise Exception(f"{message} (line {self.line})")
 
     def add_refs_to_label(self, label):
         if "refs" in self.labels[label] and self.line not in self.labels[label]["refs"]:
@@ -97,8 +100,9 @@ class Assembler:
                 self.labels[token.value] = { "value": 0xffff, "line": self.line, "refs": [] }
             self.add_refs_to_label(token.value)
             if self.run == 2 and self.labels[token.value]["value"] == 0xffff:
-                raise Exception(f'Label "{token.value}" is not defined')
+                self.error(f'Label "{token.value}" is not defined')
                 pass
+            # print(self.labels[token.value]["value"])
             return self.labels[token.value]["value"]
         return None
 
@@ -168,13 +172,13 @@ class Assembler:
                 self.skip(FILL)
                 fill_amount = self.expression()
                 if fill_amount > 255 or fill_amount == 0:
-                    raise Exception("Illegal quantity")
+                    self.error("Illegal quantity")
                 self.skip(COMMA)
                 fill_byte = self.expression()
                 if fill_byte > 255:
-                    raise Exception("Illegal quantity")
+                    self.error("Illegal quantity")
                 fill_pc = self.pc
-                if self.run == 2:
+                if self.run == 2:#!!!!!!!!!!!!!!!!!!!!!!!!!!!
                     for i in range(fill_amount):
                         self.poke(self.pc, fill_byte)
                         self.pc += 1
@@ -192,7 +196,7 @@ class Assembler:
                 while self.current_token.token_type in (LABEL, NUMBER, GT, LT):
                     value = self.expression()
                     if value > 256:
-                        raise Exception("Illegal quantity")
+                        self.error("Illegal quantity")
                     if self.run == 2:
                         self.poke(self.pc, value)
                         byte_data.append(value)
@@ -208,6 +212,26 @@ class Assembler:
                             print()
                         break
                     self.skip(COMMA)
+                continue
+            if token.test(TEXT):
+                self.skip(TEXT)
+                s = self.current_token.value
+                byte_line = token.line
+                byte_pc = self.pc
+                byte_data = []
+                self.skip(STRING)
+                for value in s:
+                    if self.run == 2:
+                        self.poke(self.pc, uni2petscii(ord(value)))
+                        byte_data.append(uni2petscii(ord(value)))
+                    self.pc += 1
+
+                if self.run == 2 and self.verbose:
+                    b = byte_data[0]
+                    print(f"{byte_line:05} {byte_pc:04x}-{self.pc - 1:04x}     text \"{chr(b)}", end="")
+                    for data in byte_data[1:]:
+                        print(chr(data),end="")
+                    print("\"")
                 continue
             if token.test(WORD):
                 word_line = token.line
@@ -229,20 +253,35 @@ class Assembler:
                         break
                     self.skip(COMMA)
                 continue
-            if token.test(TEXT):
-                self.skip(TEXT)
-                print(f'text "{self.current_token.value}" - NOT IMPLEMENTED')
-                self.skip(STRING)
-                continue
             if token.test(LABEL):
                 self.skip(LABEL)
                 if self.current_token.test(ASSIGN):
                     self.skip(ASSIGN)
-                    self.set_label(token.value, self.expression())
-                else:
+                    value = self.expression()
+                    if self.run == 1:
+                        if token.value in self.labels and self.labels[token.value]["value"] != 0xffff:
+                            self.error(f'Label "{token.value}" already defined')
+                        self.set_label(token.value, value)
+                    else:
+                        if token.value not in self.labels:
+                            self.set_label(token.value, value)
+                        elif self.labels[token.value]["value"] == 0xffff:
+                            self.labels[token.value]["value"] = value
+                        elif self.labels[token.value]["value"] != value:
+                            self.error(f'Label "{token.value}" already defined')
+                    self.add_refs_to_label(token.value)
+                    continue
+                if self.run == 1:
+                    if token.value in self.labels and self.labels[token.value]["value"] != 0xffff:
+                        self.error(f'Label "{token.value}" already defined')
                     self.set_label(token.value, self.pc)
-                    if self.run == 2: # fix forward refs
-                        self.labels[token.value]["line"] = self.line
+                else:
+                    if token.value not in self.labels:
+                        self.labels[token.value] = { "value": self.pc, "line": self.line, "refs": [] }
+                    if self.current_token.test(COLON):
+                        self.skip(COLON)
+                if self.run == 2:
+                    self.labels[token.value]["line"] = self.line
                 self.add_refs_to_label(token.value)
                 continue
             if token.test(ORG):
@@ -266,7 +305,7 @@ class Assembler:
                 self.skip(HASH)
                 arg = self.expression()
                 if arg > 255:
-                    raise Exception("Illegal quantity (#)")
+                    self.error("Illegal quantity (#)")
                 self.asm_command(token, IMMEDIATE, arg)
                 continue
 
@@ -276,21 +315,21 @@ class Assembler:
                 if self.current_token.test(COMMA): # ,x)
                     self.skip(COMMA)
                     if self.current_token.value.lower() != "x":
-                        raise Exception("Syntax (X expected)")
+                        self.error("Syntax (X expected)")
                     self.skip(LABEL)
                     self.skip(RPAREN)
                     if arg > 255:
-                        raise Exception("Illegal quantity (must be 0..255)")
+                        self.error("Illegal quantity (must be 0..255)")
                     self.asm_command(token, USELESS, arg)
                 elif self.current_token.test(RPAREN): # )
                     self.skip(RPAREN)
                     if self.current_token.test(COMMA): # ),y
                         self.skip(COMMA)
                         if self.current_token.value.lower() != "y":
-                            raise Exception("Syntax (Y expected)")
+                            self.error("Syntax (Y expected)")
                         self.skip(LABEL)
                         if arg > 255:
-                            raise Exception("Illegal quantity (must be 0..255)")
+                            self.error("Illegal quantity (must be 0..255)")
                         self.asm_command(token, INDIRECTY, arg)
                     else: # indirect )
                         self.asm_command(token, INDIRECT, arg)
@@ -318,7 +357,7 @@ class Assembler:
                             self.asm_command(token, ABSOLUTEY, arg)
                         continue
                     else:
-                        raise Exception("Syntax (X or Y expected)")
+                        self.error("Syntax (X or Y expected)")
             # zp/abs
             if arg <= 255 and ZP in OPCODES[token.value]:
                 self.asm_command(token, ZP, arg)
@@ -328,15 +367,17 @@ class Assembler:
                 self.asm_command(token, ABSOLUTE, arg)
 
     def asm_command(self, token, mode, arg):
-        if mode not in OPCODES[token.value.lower()]:
-            raise Exception("Unknown addressing mode")
+        token.value = token.value.lower()
+        if mode not in OPCODES[token.value]:
+            self.error("Unknown addressing mode")
         if arg is not None:
             arg_low = arg % 256
             arg_high = arg // 256
-            if mode == RELATIVE:
-                arg_low = arg - self.pc - 2
-                if arg <= self.pc:
-                    arg_low = 254 - (self.pc - arg)
+            if self.run == 2 and mode == RELATIVE:
+                branch_offset = arg - (self.pc + 2)
+                if not (-128 <= branch_offset <= 127):
+                    self.error("Branch out of range")
+                arg_low = branch_offset & 0xff
 
         if self.run == 2 and self.verbose:
             if mode == IMPLIED:
@@ -377,6 +418,16 @@ class Assembler:
             if self.run == 2:
                 self.poke(self.pc,arg_high)
             self.pc += 1
+
+def uni2petscii(unicode):
+    result = 32
+    if unicode >= 65 and unicode <= 90:     # Upper
+        result = unicode + 128
+    if unicode >= 97 and unicode <= 133:    # lower
+        result = unicode - 32
+    if unicode >= 32 and unicode <= 64:     # digits
+        result = unicode
+    return result
 
 if __name__ == "__main__":
     pass
