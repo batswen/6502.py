@@ -1,9 +1,12 @@
 # 6502.py
-An assembler and disassembler for the 6502 cpu written in python
+An assembler and disassembler for the 6502 cpu written in python\
+The output has a two byte (lo/hi) header for the c= load routine
 
 ## Assembler
 
 Start: python asm.py file.src [outfile = "a.out"]
+
+See example output below
 
 ## Disassembler
 
@@ -50,3 +53,29 @@ Use +,-,*,/ for addition, subtraction, multiplication and division; and, or, eor
 ### Future plans
 * Float (FLPT and MFLPT)
 * Unicode to PETSCII conversion
+
+# Example
+```
+Pass 1
+Pass 2
+00004 c000 78       sei
+00005 c001 a9 15    lda #$15    ;21
+00005 c003 8d 14 03 sta $0314   ;788
+00006 c006 a9 c0    lda #$c0    ;192
+00006 c008 8d 15 03 sta $0315   ;789
+00007 c00b a9 93    lda #$93    ;147
+00007 c00d 20 d2 ff jsr $ffd2   ;65490
+00008 c010 58       cli
+00009 c011 90 01    bcc $c014   ;49172
+00010 c013 e8       inx
+00012 c014 60       rts
+00013 c015 4c 31 ea jmp $ea31   ;59953
+00014 c018 a9 07    lda #$07    ;7
+00015 c01a a2 27    ldx #$27    ;39
+00016 c01c a0 f8    ldy #$f8    ;248
+Code: $c000 - $c01d
+00001 a               =$0093 (  147) [1, 7]
+00002 irqvec          =$0314 (  788) [2, 5, 6]
+00013 irq             =$c015 (49173) [5, 6, 13]
+00011 ende            =$c014 (49172) [9, 11]
+```
