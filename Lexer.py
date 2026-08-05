@@ -133,19 +133,16 @@ class Lexer:
             text = self.get_label_or_opcode()
             if text.lower() in OPCODES:
                 return Token(self.line, OPCODE, text.lower())
-            elif text.lower() in ("org", "base", ".ba"):
+            elif text.lower() in ("org", "base", "ba", ".org", ".base", ".ba"):
                 return Token(self.line, ORG, ORG)
-            # elif text.lower() in ("let"):
-            #     return Token(self.line, LET, LET)
-            elif text.lower() in ("byte", "byt", ".by"):
+            elif text.lower() in ("byte", "byt", "by", ".byte", ".byt", ".by"):
                 return Token(self.line, BYTE, BYTE)
             elif text.lower() == "fill":
                 return Token(self.line, FILL, FILL)
-            elif text.lower() in ("word", ".wo"):
+            elif text.lower() in ("word", ".word", "wo", ".wo"):
                 return Token(self.line, WORD, WORD)
-            elif text.lower() == "text":
+            elif text.lower() in ("text", "txt", ".text", ".txt"):
                 return Token(self.line, TEXT, TEXT)
-            return Token(self.line, LABEL, text)
         raise Exception(f"Syntax ({self.current_char})")
     def get_tokens(self):
         try:
