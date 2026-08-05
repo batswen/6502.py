@@ -34,7 +34,7 @@ Case insensitive, except for strings
 * word expr{, expr}
 * byte expr{, expr}
 * fill amount, byte
-* text "string" - NOT IMPLEMENTED
+* text "string"
 
 ### Labels
 Case sensitive
